@@ -42,7 +42,7 @@ export function SuggestionsBoard() {
   }
 
   return (
-    <Card className="bg-gray-50 dark:bg-gray-900 max-w-md mx-auto">
+    <Card className="bg-gray-50 dark:bg-gray-900 max-w-md mx-auto shadow-none">
       <CardContent className="p-6">
         {/* Header */}
         <div className="text-center mb-6">

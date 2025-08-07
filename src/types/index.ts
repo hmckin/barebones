@@ -10,4 +10,8 @@ export interface Suggestion {
 export interface ThemeColors {
   primary: string
   secondary: string
+}
+
+export interface UserUpvotes {
+  upvotedPosts: string[]
 } 

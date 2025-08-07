@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState } from 'react'
+import React from 'react'
+import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ChevronUp, MessageSquare, ChevronDown } from 'lucide-react'
@@ -40,7 +41,7 @@ interface TrendingPostsProps {
 }
 
 export function TrendingPosts({ sortBy, showStatus = true }: TrendingPostsProps) {
-  const { suggestions, upvoteSuggestion } = useApp()
+  const { suggestions, upvoteSuggestion, hasUserUpvoted, userUpvotes, selectPost } = useApp()
 
   const getSortedSuggestions = () => {
     const sorted = [...suggestions]
@@ -65,48 +66,90 @@ export function TrendingPosts({ sortBy, showStatus = true }: TrendingPostsProps)
 
   return (
     <div className="space-y-4">
-      {sortedSuggestions.map((suggestion) => (
-        <Card key={suggestion.id} className="!bg-transparent hover:!bg-white dark:hover:!bg-gray-800 border-gray-200 dark:border-gray-700 transition-colors !shadow-none">
-          <CardContent className="p-4">
-            <div className="flex space-x-4">
-              {/* Upvote Section */}
-              <div className="flex flex-col items-center space-y-1">
-                <button
-                  onClick={() => upvoteSuggestion(suggestion.id)}
-                  className="flex flex-col items-center space-y-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors"
-                >
-                  <ChevronUp className="w-5 h-5 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {suggestion.upvotes}
-                  </span>
-                </button>
-              </div>
+      {sortedSuggestions.map((suggestion, index) => {
+        const isUpvoted = hasUserUpvoted(suggestion.id)
+        
+        return (
+          <motion.div
+            key={suggestion.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ 
+              duration: 0.3, 
+              delay: index * 0.05,
+              ease: "easeOut"
+            }}
+            whileHover={{ 
+              scale: 1.02,
+              transition: { duration: 0.2 }
+            }}
+            whileTap={{ 
+              scale: 0.98,
+              transition: { duration: 0.1 }
+            }}
+          >
+            <Card 
+              className="bg-transparent hover:bg-white dark:hover:bg-gray-800 border-0 hover:border hover:border-gray-200 dark:hover:border-gray-700 shadow-none transition-colors outline-none cursor-pointer"
+              onClick={() => selectPost(suggestion)}
+            >
+            <CardContent className="p-4">
+              <div className="flex space-x-4">
+                {/* Upvote Section */}
+                <div className="flex flex-col items-center space-y-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      upvoteSuggestion(suggestion.id)
+                    }}
+                    className={`flex flex-col items-center justify-center w-12 h-12 rounded-full transition-colors ${
+                      isUpvoted
+                        ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
+                    }`}
+                    title={
+                      isUpvoted
+                        ? 'Click to remove upvote'
+                        : 'Click to upvote this post'
+                    }
+                  >
+                    <ChevronUp className={`w-4 h-4 ${isUpvoted ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                    <span className={`text-xs font-medium leading-none ${
+                      isUpvoted
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-700 dark:text-gray-300'
+                    }`}>
+                      {suggestion.upvotes}
+                    </span>
+                  </button>
+                </div>
 
-              {/* Content Section */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  {suggestion.title}
-                </h3>
-                {showStatus && <ProgressBadge status={suggestion.status} />}
-                {suggestion.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
-                    {suggestion.description}
-                  </p>
-                )}
-              </div>
+                {/* Content Section */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    {suggestion.title}
+                  </h3>
+                  {showStatus && <ProgressBadge status={suggestion.status} />}
+                  {suggestion.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
+                      {suggestion.description}
+                    </p>
+                  )}
+                </div>
 
-              {/* Comments Section */}
-              <div className="flex items-center space-x-1 text-gray-500">
-                <MessageSquare className="w-4 h-4" />
-                <span className="text-sm">0</span>
+                {/* Comments Section */}
+                <div className="flex items-center space-x-1 text-gray-500">
+                  <MessageSquare className="w-4 h-4" />
+                  <span className="text-sm">0</span>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+          </motion.div>
+        )
+      })}
 
       {suggestions.length === 0 && (
-        <Card className="!bg-transparent hover:!bg-white dark:hover:!bg-gray-800 transition-colors !shadow-none">
+        <Card className="bg-transparent hover:bg-white dark:hover:bg-gray-800 border-0 hover:border hover:border-gray-200 dark:hover:border-gray-700 shadow-none transition-colors outline-none">
           <CardContent className="p-8 text-center">
             <p className="text-gray-500 dark:text-gray-400">
               No suggestions yet. Be the first to create a post!
@@ -124,6 +167,7 @@ interface PostsHeaderProps {
 }
 
 export function PostsHeader({ sortBy, onSortChange }: PostsHeaderProps) {
+  
   const getSortLabel = () => {
     switch (sortBy) {
       case 'trending':
@@ -173,6 +217,7 @@ export function PostsHeader({ sortBy, onSortChange }: PostsHeaderProps) {
         <span className="text-xl font-semibold">posts</span>
       </div>
       <div className="flex items-center space-x-2">
+        {/* Search Icon */}
         <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>

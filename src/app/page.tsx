@@ -1,18 +1,20 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SuggestionsBoard } from '@/components/suggestions-board'
 import { TrendingPosts, PostsHeader } from '@/components/trending-posts'
+import { ExpandedPost } from '@/components/expanded-post'
 import { RoadmapView } from '@/components/roadmap-view'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useApp } from '@/contexts/app-context'
 
 export default function Home() {
-  const { themeColors } = useApp()
+  const { themeColors, selectedPost } = useApp()
   const [mounted, setMounted] = useState(false)
   const [sortBy, setSortBy] = useState('trending')
-  const [activeTab, setActiveTab] = useState('roadmap')
+  const [activeTab, setActiveTab] = useState('requests')
 
   useEffect(() => {
     setMounted(true)
@@ -38,7 +40,10 @@ export default function Home() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <div>
+              <div className="flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-bone">
+                  <path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z"/>
+                </svg>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">barebones</h1>
               </div>
             </div>
@@ -83,30 +88,56 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
-        {/* Requests Tab */}
-        {activeTab === 'requests' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column - Create Post Form */}
-              <div className="lg:col-span-1">
-                <SuggestionsBoard />
-              </div>
+        <AnimatePresence mode="wait">
+          {/* Expanded Post View */}
+          {selectedPost && activeTab === 'requests' && (
+            <motion.div
+              key="expanded-post"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+              <ExpandedPost post={selectedPost} />
+            </motion.div>
+          )}
+          
+          {/* Regular Layout */}
+          {!selectedPost && (
+            <motion.div
+              key="regular-layout"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+              {/* Requests Tab */}
+              {activeTab === 'requests' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Column - Create Post Form */}
+                    <div className="lg:col-span-1">
+                      <SuggestionsBoard />
+                    </div>
+                    
+                    {/* Right Column - Trending Posts */}
+                    <div className="lg:col-span-2 space-y-6">
+                      <PostsHeader sortBy={sortBy} onSortChange={setSortBy} />
+                      <TrendingPosts sortBy={sortBy} showStatus={false} />
+                    </div>
+                  </div>
+                </div>
+              )}
               
-              {/* Right Column - Trending Posts */}
-              <div className="lg:col-span-2 space-y-6">
-                <PostsHeader sortBy={sortBy} onSortChange={setSortBy} />
-                <TrendingPosts sortBy={sortBy} showStatus={false} />
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Roadmap Tab */}
-        {activeTab === 'roadmap' && (
-          <div className="space-y-6">
-            <RoadmapView />
-          </div>
-        )}
+              {/* Roadmap Tab */}
+              {activeTab === 'roadmap' && (
+                <div className="space-y-6">
+                  <RoadmapView />
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

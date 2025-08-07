@@ -1,15 +1,19 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { Suggestion, ThemeColors } from '@/types'
+import { Suggestion, ThemeColors, UserUpvotes } from '@/types'
 
 interface AppContextType {
   suggestions: Suggestion[]
   themeColors: ThemeColors
+  userUpvotes: UserUpvotes
+  selectedPost: Suggestion | null
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt'>) => void
-  upvoteSuggestion: (id: string) => void
+  upvoteSuggestion: (id: string) => void // Toggles upvote on/off
   updateSuggestionStatus: (id: string, status: Suggestion['status']) => void
   updateThemeColors: (colors: Partial<ThemeColors>) => void
+  hasUserUpvoted: (id: string) => boolean
+  selectPost: (post: Suggestion | null) => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -46,18 +50,36 @@ const defaultThemeColors: ThemeColors = {
   secondary: '#8b5cf6'
 }
 
+const defaultUserUpvotes: UserUpvotes = {
+  upvotedPosts: []
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>(initialSuggestions)
   const [themeColors, setThemeColors] = useState<ThemeColors>(defaultThemeColors)
+  const [userUpvotes, setUserUpvotes] = useState<UserUpvotes>(defaultUserUpvotes)
+  const [selectedPost, setSelectedPost] = useState<Suggestion | null>(null)
 
-  // Load theme colors from localStorage on mount
+  // Load theme colors and user upvotes from localStorage on mount
   useEffect(() => {
-    const savedColors = localStorage.getItem('themeColors')
-    if (savedColors) {
-      try {
-        setThemeColors(JSON.parse(savedColors))
-      } catch (error) {
-        console.error('Failed to parse saved theme colors:', error)
+    // Only access localStorage on the client side
+    if (typeof window !== 'undefined') {
+      const savedColors = localStorage.getItem('themeColors')
+      if (savedColors) {
+        try {
+          setThemeColors(JSON.parse(savedColors))
+        } catch (error) {
+          console.error('Failed to parse saved theme colors:', error)
+        }
+      }
+
+      const savedUpvotes = localStorage.getItem('userUpvotes')
+      if (savedUpvotes) {
+        try {
+          setUserUpvotes(JSON.parse(savedUpvotes))
+        } catch (error) {
+          console.error('Failed to parse saved user upvotes:', error)
+        }
       }
     }
   }, [])
@@ -71,14 +93,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSuggestions(prev => [newSuggestion, ...prev])
   }
 
+  const hasUserUpvoted = (id: string): boolean => {
+    return userUpvotes.upvotedPosts.includes(id)
+  }
+
+  const canUpvote = (id: string): boolean => {
+    return !hasUserUpvoted(id)
+  }
+
   const upvoteSuggestion = (id: string) => {
-    setSuggestions(prev =>
-      prev.map(suggestion =>
-        suggestion.id === id
-          ? { ...suggestion, upvotes: suggestion.upvotes + 1 }
-          : suggestion
+    const isUpvoted = hasUserUpvoted(id)
+    
+    if (isUpvoted) {
+      // Remove upvote
+      setSuggestions(prev =>
+        prev.map(suggestion =>
+          suggestion.id === id
+            ? { ...suggestion, upvotes: Math.max(0, suggestion.upvotes - 1) }
+            : suggestion
+        )
       )
-    )
+
+      // Update user upvotes
+      const newUserUpvotes: UserUpvotes = {
+        upvotedPosts: userUpvotes.upvotedPosts.filter(postId => postId !== id)
+      }
+      
+      setUserUpvotes(newUserUpvotes)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('userUpvotes', JSON.stringify(newUserUpvotes))
+      }
+    } else {
+      // Add upvote
+      setSuggestions(prev =>
+        prev.map(suggestion =>
+          suggestion.id === id
+            ? { ...suggestion, upvotes: suggestion.upvotes + 1 }
+            : suggestion
+        )
+      )
+
+      // Update user upvotes
+      const newUserUpvotes: UserUpvotes = {
+        upvotedPosts: [...userUpvotes.upvotedPosts, id]
+      }
+      
+      setUserUpvotes(newUserUpvotes)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('userUpvotes', JSON.stringify(newUserUpvotes))
+      }
+    }
   }
 
   const updateSuggestionStatus = (id: string, status: Suggestion['status']) => {
@@ -94,7 +158,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateThemeColors = (colors: Partial<ThemeColors>) => {
     const newColors = { ...themeColors, ...colors }
     setThemeColors(newColors)
-    localStorage.setItem('themeColors', JSON.stringify(newColors))
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('themeColors', JSON.stringify(newColors))
+    }
+  }
+
+  const selectPost = (post: Suggestion | null) => {
+    setSelectedPost(post)
   }
 
   return (
@@ -102,10 +172,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       value={{
         suggestions,
         themeColors,
+        userUpvotes,
+        selectedPost,
         addSuggestion,
         upvoteSuggestion,
         updateSuggestionStatus,
-        updateThemeColors
+        updateThemeColors,
+        hasUserUpvoted,
+        selectPost
       }}
     >
       {children}
