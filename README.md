@@ -1,36 +1,144 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# barebones - Feature Suggestions & Progress Tracking
+
+A modern Next.js application for managing feature suggestions and tracking their progress through different stages.
+
+## Features
+
+### 🎯 Core Functionality
+- **Suggestions Board**: View, upvote, and submit new feature suggestions
+- **Progress View**: Track suggestions grouped by status (Queued, In Progress, Completed)
+- **Status Management**: Update suggestion status with dropdown selectors
+
+### 🎨 UI/UX Features
+- **Light/Dark Theme**: Toggle between light, dark, and system themes
+- **Custom Theme Colors**: Pick primary and secondary colors with color pickers
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **Modern UI**: Built with shadcn/ui components for a clean, professional look
+
+### 💾 Data Management
+- **In-Memory Storage**: Suggestions persist during the session
+- **Form Validation**: Ensures required fields are filled
+- **Real-time Updates**: Changes reflect immediately across all views
+
+## Tech Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui
+- **Theme Management**: next-themes
+- **Icons**: Lucide React
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
 
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd barebones
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/
+│   ├── globals.css          # Global styles and theme variables
+│   ├── layout.tsx           # Root layout with providers
+│   └── page.tsx             # Main application page
+├── components/
+│   ├── ui/                  # shadcn/ui components
+│   ├── color-picker.tsx     # Color picker component
+│   ├── progress-view.tsx    # Progress tracking view
+│   ├── suggestions-board.tsx # Suggestions management
+│   ├── theme-settings.tsx   # Theme customization
+│   └── theme-toggle.tsx     # Theme switcher
+├── contexts/
+│   └── app-context.tsx      # Global state management
+└── types/
+    └── index.ts             # TypeScript type definitions
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Usage
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Suggestions Board
+- View all feature suggestions sorted by upvotes
+- Click "New Suggestion" to submit a feature request
+- Upvote existing suggestions with the thumbs up button
+- Each suggestion shows title, description, status, and creation date
 
-## Deploy on Vercel
+### Progress View
+- See suggestions organized by status in three columns
+- Use dropdown selectors to change suggestion status
+- Track progress from Queued → In Progress → Completed
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Theme Customization
+- Toggle between light, dark, and system themes
+- Use color pickers to customize primary and secondary colors
+- Theme preferences are saved in localStorage
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Data Model
+
+### Suggestion
+```typescript
+interface Suggestion {
+  id: string
+  title: string
+  description: string
+  upvotes: number
+  status: 'Queued' | 'In Progress' | 'Completed'
+  createdAt: Date
+}
+```
+
+### Theme Colors
+```typescript
+interface ThemeColors {
+  primary: string
+  secondary: string
+}
+```
+
+## Development
+
+### Available Scripts
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+
+### Adding New Components
+The project uses shadcn/ui for consistent component design. To add new components:
+
+```bash
+npx shadcn@latest add <component-name>
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).

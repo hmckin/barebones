@@ -1,103 +1,113 @@
-import Image from "next/image";
+"use client"
+
+import React, { useState, useEffect } from 'react'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { SuggestionsBoard } from '@/components/suggestions-board'
+import { TrendingPosts, PostsHeader } from '@/components/trending-posts'
+import { RoadmapView } from '@/components/roadmap-view'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useApp } from '@/contexts/app-context'
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { themeColors } = useApp()
+  const [mounted, setMounted] = useState(false)
+  const [sortBy, setSortBy] = useState('trending')
+  const [activeTab, setActiveTab] = useState('roadmap')
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Apply dynamic theme colors
+  useEffect(() => {
+    if (mounted) {
+      const root = document.documentElement
+      root.style.setProperty('--custom-primary', themeColors.primary)
+      root.style.setProperty('--custom-secondary', themeColors.secondary)
+    }
+  }, [themeColors, mounted])
+
+  if (!mounted) {
+    return null
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-8">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">barebones</h1>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
+            </div>
+          </div>
+          
+          {/* Tabs below title */}
+          <div className="mt-4 flex justify-start">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+              <TabsList className="flex w-auto bg-transparent p-0 space-x-1">
+                <TabsTrigger 
+                  value="requests" 
+                  className="flex items-left bg-transparent data-[state=active]:text-primary hover:text-gray-900 dark:hover:text-gray-100 rounded-md px-3 py-2 transition-colors text-gray-400 dark:text-gray-500"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lightbulb">
+                    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
+                    <path d="M9 18h6"/>
+                    <path d="M10 22h4"/>
+                  </svg>
+                  <span>Feature Requests</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="roadmap" 
+                  className="flex items-left bg-transparent data-[state=active]:text-primary hover:text-gray-900 dark:hover:text-gray-100 rounded-md px-3 py-2 transition-colors text-gray-400 dark:text-gray-500"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-square-kanban">
+                    <rect width="18" height="18" x="3" y="3" rx="2"/>
+                    <path d="M8 7v7"/>
+                    <path d="M12 7v4"/>
+                    <path d="M16 7v9"/>
+                  </svg>
+                  <span>Roadmap</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </header>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Requests Tab */}
+        {activeTab === 'requests' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column - Create Post Form */}
+              <div className="lg:col-span-1">
+                <SuggestionsBoard />
+              </div>
+              
+              {/* Right Column - Trending Posts */}
+              <div className="lg:col-span-2 space-y-6">
+                <PostsHeader sortBy={sortBy} onSortChange={setSortBy} />
+                <TrendingPosts sortBy={sortBy} showStatus={false} />
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Roadmap Tab */}
+        {activeTab === 'roadmap' && (
+          <div className="space-y-6">
+            <RoadmapView />
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }
