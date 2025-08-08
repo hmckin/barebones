@@ -10,13 +10,40 @@ import { Image as ImageIcon, X } from 'lucide-react'
 import { useApp } from '@/contexts/app-context'
 import { ImageAttachment } from '@/types'
 
-export function SuggestionsBoard() {
+interface SuggestionsBoardProps {
+  searchQuery?: string
+  onSearchChange?: (query: string) => void
+}
+
+export function SuggestionsBoard({ searchQuery = '', onSearchChange }: SuggestionsBoardProps) {
   const { addSuggestion } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [errors, setErrors] = useState<{ title?: string }>({})
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTitle = e.target.value
+    setTitle(newTitle)
+    
+    // Update search query based on title and description
+    if (onSearchChange) {
+      const searchText = `${newTitle} ${description}`.trim()
+      onSearchChange(searchText)
+    }
+  }
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newDescription = e.target.value
+    setDescription(newDescription)
+    
+    // Update search query based on title and description
+    if (onSearchChange) {
+      const searchText = `${title} ${newDescription}`.trim()
+      onSearchChange(searchText)
+    }
+  }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -92,6 +119,11 @@ export function SuggestionsBoard() {
     setDescription('')
     setErrors({})
     
+    // Clear search when form is submitted
+    if (onSearchChange) {
+      onSearchChange('')
+    }
+    
     // Clean up image URLs and reset attachments
     attachedImages.forEach(img => URL.revokeObjectURL(img.url))
     setAttachedImages([])
@@ -122,7 +154,7 @@ export function SuggestionsBoard() {
             <Input
               id="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={handleTitleChange}
               placeholder="Your brilliant idea"
               className={`${errors.title ? 'border-red-500' : ''} bg-white dark:bg-gray-800`}
             />
@@ -138,7 +170,7 @@ export function SuggestionsBoard() {
             <Textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={handleDescriptionChange}
               placeholder="Any additional details"
               rows={4}
               className="bg-white dark:bg-gray-800"

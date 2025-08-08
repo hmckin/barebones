@@ -16,6 +16,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('trending')
   const [activeTab, setActiveTab] = useState('requests')
   const [searchQuery, setSearchQuery] = useState('')
+  const [suggestionsSearchQuery, setSuggestionsSearchQuery] = useState('')
 
   useEffect(() => {
     setMounted(true)
@@ -38,7 +39,7 @@ export default function Home() {
     <div className={`min-h-screen bg-background ${selectedPost ? 'h-screen overflow-hidden' : ''}`}>
       {/* Header */}
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 pb-1 pt-4">
           <div className="flex items-start justify-between">
             <div className="flex flex-col space-y-2">
               <div className="flex items-center space-x-2">
@@ -117,7 +118,10 @@ export default function Home() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
                     {/* Left Column - Create Post Form */}
                     <div className="lg:col-span-1">
-                      <SuggestionsBoard />
+                      <SuggestionsBoard 
+                        searchQuery={suggestionsSearchQuery}
+                        onSearchChange={setSuggestionsSearchQuery}
+                      />
                     </div>
                     
                     {/* Right Column - Trending Posts */}
@@ -132,7 +136,7 @@ export default function Home() {
                         <TrendingPosts 
                           sortBy={sortBy} 
                           showStatus={false} 
-                          searchQuery={searchQuery}
+                          searchQuery={`${searchQuery} ${suggestionsSearchQuery}`.trim()}
                         />
                       </div>
                     </div>
