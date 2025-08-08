@@ -119,6 +119,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  button, [role="button"] {
+    cursor: pointer;
+  }
 }
 
 /* Custom theme color variables */

@@ -1,10 +1,10 @@
 "use client"
 
 import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ChevronUp, MessageSquare, ArrowLeft, Send } from 'lucide-react'
+import { ChevronUp, MessageSquare, ArrowLeft, Send, Image as ImageIcon, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/contexts/app-context'
@@ -40,6 +40,8 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
   const currentPost = suggestions.find(s => s.id === post.id) || post
   const isUpvoted = hasUserUpvoted(currentPost.id)
   const [commentContent, setCommentContent] = useState('')
+  const [showImages, setShowImages] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,6 +50,25 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
       setCommentContent('')
     }
   }
+
+  const handleImageClose = () => {
+    setShowImages(false)
+    setCurrentImageIndex(0)
+  }
+
+  const handleNextImage = () => {
+    if (currentPost.images && currentPost.images.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % currentPost.images.length)
+    }
+  }
+
+  const handlePrevImage = () => {
+    if (currentPost.images && currentPost.images.length > 0) {
+      setCurrentImageIndex((prev) => (prev - 1 + currentPost.images.length) % currentPost.images.length)
+    }
+  }
+
+  const hasImages = currentPost.images && currentPost.images.length > 0
 
   return (
     <div className="relative h-screen overflow-hidden">
@@ -131,6 +152,15 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
                         <MessageSquare className="w-4 h-4" />
                         <span>{currentPost.comments.length} comments</span>
                       </div>
+                      {hasImages && (
+                        <button
+                          onClick={() => setShowImages(true)}
+                          className="flex items-center space-x-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 underline"
+                        >
+                          <ImageIcon className="w-4 h-4" />
+                          <span>View images</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -143,7 +173,7 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
         <div className="mt-5 flex flex-col h-[calc(100vh-500px)]">
           
           {/* Comments List */}
-          <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+          <div className="flex-1 overflow-y-auto space-y-2 pr-2 border-b border-gray-200 dark:border-gray-700">
             {currentPost.comments.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               </div>
@@ -175,7 +205,7 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
         </div>
 
         {/* Add Comment Form - Pinned to viewport bottom */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4 z-10">
+        <div className="fixed bottom-0 left-60 right-60 bg-transparent p-4 z-10">
           <div className="max-w-4xl mx-auto">
             <form onSubmit={handleAddComment} className="flex items-center space-x-3">
               <Input
@@ -183,7 +213,7 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
                 placeholder="Add a comment..."
-                className="flex-1 border-0 bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-0"
+                className="flex-1 border-0 bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 required
               />
               <Button 
@@ -197,6 +227,68 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
           </div>
         </div>
       </motion.div>
+
+      {/* Image Viewer Overlay */}
+      <AnimatePresence>
+        {showImages && hasImages && (
+          <motion.div
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={handleImageClose}
+              className="absolute top-4 right-4 z-40 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Image Display */}
+            <div className="relative w-full h-full flex items-center justify-center p-8">
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={currentImageIndex}
+                  src={currentPost.images[currentImageIndex].url}
+                  alt={currentPost.images[currentImageIndex].name}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.3 }}
+                />
+              </AnimatePresence>
+
+              {/* Navigation Arrows */}
+              {currentPost.images.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrevImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                  <button
+                    onClick={handleNextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                </>
+              )}
+
+              {/* Image Counter */}
+              {currentPost.images.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                  {currentImageIndex + 1} / {currentPost.images.length}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 } 

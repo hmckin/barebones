@@ -1,10 +1,10 @@
 "use client"
 
-import React from 'react'
-import { motion } from 'framer-motion'
+import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ChevronUp, MessageSquare, ChevronDown } from 'lucide-react'
+import { ChevronUp, MessageSquare, ChevronDown, Paperclip, Search, X } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useApp } from '@/contexts/app-context'
 
 const getStatusColor = (status: string) => {
@@ -38,34 +39,46 @@ const ProgressBadge = ({ status }: { status: string }) => {
 interface TrendingPostsProps {
   sortBy: string
   showStatus?: boolean
+  searchQuery?: string
 }
 
-export function TrendingPosts({ sortBy, showStatus = true }: TrendingPostsProps) {
+export function TrendingPosts({ sortBy, showStatus = true, searchQuery = '' }: TrendingPostsProps) {
   const { suggestions, upvoteSuggestion, hasUserUpvoted, userUpvotes, selectPost } = useApp()
 
   const getSortedSuggestions = () => {
-    const sorted = [...suggestions]
+    let filtered = [...suggestions]
     
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(suggestion => 
+        suggestion.title.toLowerCase().includes(query) ||
+        suggestion.description.toLowerCase().includes(query) ||
+        suggestion.status.toLowerCase().includes(query)
+      )
+    }
+    
+    // Sort the filtered results
     switch (sortBy) {
       case 'trending':
-        return sorted.sort((a, b) => b.upvotes - a.upvotes)
+        return filtered.sort((a, b) => b.upvotes - a.upvotes)
       case 'newest':
-        return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       case 'oldest':
-        return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        return filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       case 'alphabetical':
-        return sorted.sort((a, b) => a.title.localeCompare(b.title))
+        return filtered.sort((a, b) => a.title.localeCompare(b.title))
       case 'reverse-alphabetical':
-        return sorted.sort((a, b) => b.title.localeCompare(a.title))
+        return filtered.sort((a, b) => b.title.localeCompare(a.title))
       default:
-        return sorted
+        return filtered
     }
   }
 
   const sortedSuggestions = getSortedSuggestions()
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-0.5">
       {sortedSuggestions.map((suggestion, index) => {
         const isUpvoted = hasUserUpvoted(suggestion.id)
         
@@ -92,7 +105,7 @@ export function TrendingPosts({ sortBy, showStatus = true }: TrendingPostsProps)
               className="bg-transparent hover:bg-white dark:hover:bg-gray-800 border-0 hover:border hover:border-gray-200 dark:hover:border-gray-700 shadow-none transition-colors outline-none cursor-pointer"
               onClick={() => selectPost(suggestion)}
             >
-            <CardContent className="p-4">
+            <CardContent className="p-2">
               <div className="flex space-x-4">
                 {/* Upvote Section */}
                 <div className="flex flex-col items-center space-y-1">
@@ -136,10 +149,21 @@ export function TrendingPosts({ sortBy, showStatus = true }: TrendingPostsProps)
                   )}
                 </div>
 
-                {/* Comments Section */}
-                <div className="flex items-center space-x-1 text-gray-500">
-                  <MessageSquare className="w-4 h-4" />
-                  <span className="text-sm">{suggestion.comments.length}</span>
+                {/* Comments and Attachments Section */}
+                <div className="flex items-center space-x-3 text-gray-500">
+                  {/* Comments */}
+                  <div className="flex items-center space-x-1">
+                    <MessageSquare className="w-4 h-4" />
+                    <span className="text-sm">{suggestion.comments.length}</span>
+                  </div>
+                  
+                  {/* Attachments */}
+                  {suggestion.images.length > 0 && (
+                    <div className="flex items-center space-x-1">
+                      <Paperclip className="w-4 h-4" />
+                      <span className="text-sm">{suggestion.images.length}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -148,11 +172,14 @@ export function TrendingPosts({ sortBy, showStatus = true }: TrendingPostsProps)
         )
       })}
 
-      {suggestions.length === 0 && (
+      {sortedSuggestions.length === 0 && (
         <Card className="bg-transparent hover:bg-white dark:hover:bg-gray-800 border-0 hover:border hover:border-gray-200 dark:hover:border-gray-700 shadow-none transition-colors outline-none">
           <CardContent className="p-8 text-center">
             <p className="text-gray-500 dark:text-gray-400">
-              No suggestions yet. Be the first to create a post!
+              {searchQuery.trim() 
+                ? `No posts found matching "${searchQuery}"`
+                : "No suggestions yet. Be the first to create a post!"
+              }
             </p>
           </CardContent>
         </Card>
@@ -164,9 +191,12 @@ export function TrendingPosts({ sortBy, showStatus = true }: TrendingPostsProps)
 interface PostsHeaderProps {
   sortBy: string
   onSortChange: (sortBy: string) => void
+  searchQuery: string
+  onSearchChange: (query: string) => void
 }
 
-export function PostsHeader({ sortBy, onSortChange }: PostsHeaderProps) {
+export function PostsHeader({ sortBy, onSortChange, searchQuery, onSearchChange }: PostsHeaderProps) {
+  const [isSearchVisible, setIsSearchVisible] = useState(false)
   
   const getSortLabel = () => {
     switch (sortBy) {
@@ -191,7 +221,7 @@ export function PostsHeader({ sortBy, onSortChange }: PostsHeaderProps) {
         <span className="text-xl font-semibold">Showing</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-auto p-0 text-xl font-semibold">
+            <Button variant="ghost" className="h-auto text-xl font-semibold">
               {getSortLabel()}
               <ChevronDown className="h-4 w-4" />
             </Button>
@@ -217,10 +247,63 @@ export function PostsHeader({ sortBy, onSortChange }: PostsHeaderProps) {
         <span className="text-xl font-semibold">posts</span>
       </div>
       <div className="flex items-center space-x-2">
-        {/* Search Icon */}
-        <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
+        {/* Search Icon and Input */}
+        <div className="relative">
+          <div 
+            className="cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+            onMouseEnter={() => setIsSearchVisible(true)}
+            onMouseLeave={() => {
+              if (!searchQuery) {
+                setIsSearchVisible(false)
+              }
+            }}
+          >
+            <Search className="w-4 h-4 text-gray-400" />
+          </div>
+          
+          {/* Search Input - Only visible on hover or when there's a query */}
+          <AnimatePresence>
+            {(isSearchVisible || searchQuery) && (
+              <motion.div 
+                className="absolute right-0 top-0 z-10"
+                initial={{ opacity: 0, scaleX: 0 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                exit={{ opacity: 0, scaleX: 0 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                style={{ transformOrigin: "right" }}
+                onMouseEnter={() => setIsSearchVisible(true)}
+                onMouseLeave={() => {
+                  if (!searchQuery) {
+                    setIsSearchVisible(false)
+                  }
+                }}
+              >
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search posts..."
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className="pl-10 pr-8 w-64 bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-600"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => {
+                        onSearchChange('')
+                        setIsSearchVisible(false)
+                      }}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    >
+                      <X className="w-3 h-3 text-gray-400" />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   )

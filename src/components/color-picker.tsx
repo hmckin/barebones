@@ -3,6 +3,7 @@
 import React from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Palette } from 'lucide-react'
 
 interface ColorPickerProps {
   label: string
@@ -13,9 +14,12 @@ interface ColorPickerProps {
 export function ColorPicker({ label, value, onChange }: ColorPickerProps) {
   return (
     <div className="flex items-center space-x-2">
-      <Label htmlFor={`color-${label.toLowerCase()}`} className="text-xs font-medium min-w-16">
-        {label}
-      </Label>
+      <div className="flex items-center space-x-2">
+        <Palette className="h-4 w-4 text-muted-foreground" />
+        <Label htmlFor={`color-${label.toLowerCase()}`} className="text-xs font-medium min-w-16">
+          {label}
+        </Label>
+      </div>
       <div className="flex items-center space-x-2">
         <Input
           id={`color-${label.toLowerCase()}`}

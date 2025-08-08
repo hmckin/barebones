@@ -1,14 +1,14 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { Suggestion, ThemeColors, UserUpvotes, Comment } from '@/types'
+import { Suggestion, ThemeColors, UserUpvotes, Comment, ImageAttachment } from '@/types'
 
 interface AppContextType {
   suggestions: Suggestion[]
   themeColors: ThemeColors
   userUpvotes: UserUpvotes
   selectedPost: Suggestion | null
-  addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments'>) => void
+  addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => void
   addComment: (suggestionId: string, content: string, author: string) => void
   upvoteSuggestion: (id: string) => void // Toggles upvote on/off
   updateSuggestionStatus: (id: string, status: Suggestion['status']) => void
@@ -40,7 +40,8 @@ const initialSuggestions: Suggestion[] = [
         author: 'Developer456',
         createdAt: new Date('2024-01-17')
       }
-    ]
+    ],
+    images: []
   },
   {
     id: '2',
@@ -56,6 +57,16 @@ const initialSuggestions: Suggestion[] = [
         author: 'MobileUser',
         createdAt: new Date('2024-01-12')
       }
+    ],
+    images: [
+      {
+        id: 'img1',
+        name: 'mobile-mockup.png',
+        url: '/public/next.svg', // Using existing public image as placeholder
+        size: 1024 * 1024, // 1MB
+        type: 'image/png',
+        uploadedAt: new Date('2024-01-10')
+      }
     ]
   },
   {
@@ -65,7 +76,25 @@ const initialSuggestions: Suggestion[] = [
     upvotes: 8,
     status: 'Completed',
     createdAt: new Date('2024-01-05'),
-    comments: []
+    comments: [],
+    images: [
+      {
+        id: 'img2',
+        name: 'search-interface.png',
+        url: '/public/vercel.svg', // Using existing public image as placeholder
+        size: 512 * 1024, // 512KB
+        type: 'image/png',
+        uploadedAt: new Date('2024-01-05')
+      },
+      {
+        id: 'img3',
+        name: 'search-results.png',
+        url: '/public/file.svg', // Using existing public image as placeholder
+        size: 768 * 1024, // 768KB
+        type: 'image/png',
+        uploadedAt: new Date('2024-01-05')
+      }
+    ]
   }
 ]
 
@@ -108,12 +137,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const addSuggestion = (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments'>) => {
+  const addSuggestion = (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => {
     const newSuggestion: Suggestion = {
       ...suggestion,
       id: Date.now().toString(),
       createdAt: new Date(),
-      comments: []
+      comments: [],
+      images: images || []
     }
     setSuggestions(prev => [newSuggestion, ...prev])
   }

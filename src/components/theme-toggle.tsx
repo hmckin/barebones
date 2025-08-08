@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Moon, Sun, Palette } from "lucide-react"
+import { Moon, Sun, Palette, Monitor, Settings } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import { ColorPicker } from "@/components/color-picker"
 import { useApp } from "@/contexts/app-context"
 
 export function ThemeToggle() {
-  const { setTheme } = useTheme()
+  const { setTheme, theme } = useTheme()
   const { themeColors, updateThemeColors } = useApp()
 
   return (
@@ -28,7 +28,7 @@ export function ThemeToggle() {
           <span className="sr-only">Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuItem onClick={() => setTheme("light")}>
           <Sun className="mr-2 h-4 w-4" />
           Light
@@ -38,13 +38,16 @@ export function ThemeToggle() {
           Dark
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("system")}>
-          <span className="mr-2 h-4 w-4">💻</span>
+          <Monitor className="mr-2 h-4 w-4" />
           System
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <div className="p-2">
-          <div className="text-sm font-medium mb-2">Theme Colors</div>
-          <div className="space-y-2">
+        <div className="p-3">
+          <div className="text-sm font-medium mb-3 flex items-center">
+            <Settings className="mr-2 h-4 w-4" />
+            Theme Colors
+          </div>
+          <div className="space-y-3">
             <ColorPicker
               label="Primary"
               value={themeColors.primary}

@@ -5,6 +5,15 @@ export interface Comment {
   createdAt: Date
 }
 
+export interface ImageAttachment {
+  id: string
+  name: string
+  url: string
+  size: number
+  type: string
+  uploadedAt: Date
+}
+
 export interface Suggestion {
   id: string
   title: string
@@ -13,6 +22,7 @@ export interface Suggestion {
   status: 'Queued' | 'In Progress' | 'Completed'
   createdAt: Date
   comments: Comment[]
+  images: ImageAttachment[]
 }
 
 export interface ThemeColors {
