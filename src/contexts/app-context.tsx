@@ -8,6 +8,7 @@ interface AppContextType {
   themeColors: ThemeColors
   userUpvotes: UserUpvotes
   selectedPost: Suggestion | null
+  isSystemAdmin: boolean
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => void
   addComment: (suggestionId: string, content: string, author: string) => void
   upvoteSuggestion: (id: string) => void // Toggles upvote on/off
@@ -112,6 +113,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [themeColors, setThemeColors] = useState<ThemeColors>(defaultThemeColors)
   const [userUpvotes, setUserUpvotes] = useState<UserUpvotes>(defaultUserUpvotes)
   const [selectedPost, setSelectedPost] = useState<Suggestion | null>(null)
+  const [isSystemAdmin] = useState<boolean>(true) // Temporary FE flag, later replaced with BE role check
 
   // Load theme colors and user upvotes from localStorage on mount
   useEffect(() => {
@@ -246,6 +248,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         themeColors,
         userUpvotes,
         selectedPost,
+        isSystemAdmin,
         addSuggestion,
         addComment,
         upvoteSuggestion,

@@ -79,7 +79,7 @@ export default function Home() {
               </Tabs>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-end space-x-4">
               <ThemeToggle />
             </div>
           </div>
@@ -119,7 +119,6 @@ export default function Home() {
                     {/* Left Column - Create Post Form */}
                     <div className="lg:col-span-1">
                       <SuggestionsBoard 
-                        searchQuery={suggestionsSearchQuery}
                         onSearchChange={setSuggestionsSearchQuery}
                       />
                     </div>

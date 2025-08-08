@@ -11,11 +11,10 @@ import { useApp } from '@/contexts/app-context'
 import { ImageAttachment } from '@/types'
 
 interface SuggestionsBoardProps {
-  searchQuery?: string
   onSearchChange?: (query: string) => void
 }
 
-export function SuggestionsBoard({ searchQuery = '', onSearchChange }: SuggestionsBoardProps) {
+export function SuggestionsBoard({ onSearchChange }: SuggestionsBoardProps) {
   const { addSuggestion } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')

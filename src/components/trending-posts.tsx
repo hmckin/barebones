@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ChevronUp, MessageSquare, ChevronDown, Paperclip, Search, X } from 'lucide-react'
+import { ChevronUp, MessageSquare, ChevronDown, Image as ImageIcon, Search, X } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,7 +78,7 @@ export function TrendingPosts({ sortBy, showStatus = true, searchQuery = '' }: T
   const sortedSuggestions = getSortedSuggestions()
 
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-0">
       {sortedSuggestions.map((suggestion, index) => {
         const isUpvoted = hasUserUpvoted(suggestion.id)
         
@@ -105,7 +105,7 @@ export function TrendingPosts({ sortBy, showStatus = true, searchQuery = '' }: T
               className="bg-transparent hover:bg-white dark:hover:bg-gray-800 border-0 hover:border hover:border-gray-200 dark:hover:border-gray-700 shadow-none transition-colors outline-none cursor-pointer"
               onClick={() => selectPost(suggestion)}
             >
-            <CardContent className="p-2">
+            <CardContent className="p-1">
               <div className="flex space-x-4">
                 {/* Upvote Section */}
                 <div className="flex flex-col items-center space-y-1">
@@ -160,7 +160,7 @@ export function TrendingPosts({ sortBy, showStatus = true, searchQuery = '' }: T
                   {/* Attachments */}
                   {suggestion.images.length > 0 && (
                     <div className="flex items-center space-x-1">
-                      <Paperclip className="w-4 h-4" />
+                      <ImageIcon className="w-4 h-4" />
                       <span className="text-sm">{suggestion.images.length}</span>
                     </div>
                   )}

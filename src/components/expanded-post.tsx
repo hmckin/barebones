@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +23,74 @@ const getStatusColor = (status: string) => {
   }
 }
 
-const ProgressBadge = ({ status }: { status: string }) => {
+const ProgressBadge = ({ status, isSystemAdmin, onStatusChange }: { 
+  status: string
+  isSystemAdmin?: boolean
+  onStatusChange?: (status: Suggestion['status']) => void
+}) => {
+  const [showDropdown, setShowDropdown] = useState(false)
+  const statusOptions: Suggestion['status'][] = ['Queued', 'In Progress', 'Completed']
+
+  const handleStatusChange = (newStatus: Suggestion['status']) => {
+    if (onStatusChange) {
+      onStatusChange(newStatus)
+    }
+    setShowDropdown(false)
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('.status-dropdown')) {
+        setShowDropdown(false)
+      }
+    }
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showDropdown])
+
+  if (isSystemAdmin) {
+    return (
+      <div className="relative status-dropdown">
+        <button
+          onClick={() => setShowDropdown(!showDropdown)}
+          className="flex items-center space-x-1 hover:opacity-80 transition-opacity"
+        >
+          <Badge className={`text-xs font-medium ${getStatusColor(status)}`}>
+            {status.toUpperCase()}
+          </Badge>
+        </button>
+        
+        <AnimatePresence>
+          {showDropdown && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-10 min-w-[140px]"
+            >
+              {statusOptions.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => handleStatusChange(option)}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                    option === status ? 'bg-gray-50 dark:bg-gray-700 font-medium' : ''
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    )
+  }
+
   return (
     <Badge className={`text-xs font-medium ${getStatusColor(status)}`}>
       {status.toUpperCase()}
@@ -36,7 +103,7 @@ interface ExpandedPostProps {
 }
 
 export function ExpandedPost({ post }: ExpandedPostProps) {
-  const { hasUserUpvoted, upvoteSuggestion, selectPost, suggestions, addComment } = useApp()
+  const { hasUserUpvoted, upvoteSuggestion, selectPost, suggestions, addComment, updateSuggestionStatus, isSystemAdmin } = useApp()
   const currentPost = suggestions.find(s => s.id === post.id) || post
   const isUpvoted = hasUserUpvoted(currentPost.id)
   const [commentContent, setCommentContent] = useState('')
@@ -66,6 +133,10 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
     if (currentPost.images && currentPost.images.length > 0) {
       setCurrentImageIndex((prev) => (prev - 1 + currentPost.images.length) % currentPost.images.length)
     }
+  }
+
+  const handleStatusChange = (newStatus: Suggestion['status']) => {
+    updateSuggestionStatus(currentPost.id, newStatus)
   }
 
   const hasImages = currentPost.images && currentPost.images.length > 0
@@ -129,7 +200,11 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
               {/* Content Section */}
               <div className="flex-1">
                 <div className="mb-2">
-                  <ProgressBadge status={currentPost.status} />
+                  <ProgressBadge 
+                    status={currentPost.status} 
+                    isSystemAdmin={isSystemAdmin}
+                    onStatusChange={handleStatusChange}
+                  />
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
                   {currentPost.title}
@@ -205,7 +280,7 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
         </div>
 
         {/* Add Comment Form - Pinned to viewport bottom */}
-        <div className="fixed bottom-0 left-60 right-60 bg-transparent p-4 z-10">
+        <div className="fixed bottom-0 left-60 right-60 bg-transparent pb-10 z-10">
           <div className="max-w-4xl mx-auto">
             <form onSubmit={handleAddComment} className="flex items-center space-x-3">
               <Input
