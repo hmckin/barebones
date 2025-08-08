@@ -139,7 +139,7 @@ export function TrendingPosts({ sortBy, showStatus = true }: TrendingPostsProps)
                 {/* Comments Section */}
                 <div className="flex items-center space-x-1 text-gray-500">
                   <MessageSquare className="w-4 h-4" />
-                  <span className="text-sm">0</span>
+                  <span className="text-sm">{suggestion.comments.length}</span>
                 </div>
               </div>
             </CardContent>

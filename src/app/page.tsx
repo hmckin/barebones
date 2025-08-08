@@ -34,7 +34,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background ${selectedPost ? 'h-screen overflow-hidden' : ''}`}>
       {/* Header */}
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
         <div className="container mx-auto px-4 py-4">
@@ -54,7 +54,7 @@ export default function Home() {
           </div>
           
           {/* Tabs below title */}
-          <div className="mt-4 flex justify-start">
+          <div className="mt-2 flex justify-start">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
               <TabsList className="flex w-auto bg-transparent p-0 space-x-1">
                 <TabsTrigger 

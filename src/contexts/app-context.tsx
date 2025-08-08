@@ -1,14 +1,15 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { Suggestion, ThemeColors, UserUpvotes } from '@/types'
+import { Suggestion, ThemeColors, UserUpvotes, Comment } from '@/types'
 
 interface AppContextType {
   suggestions: Suggestion[]
   themeColors: ThemeColors
   userUpvotes: UserUpvotes
   selectedPost: Suggestion | null
-  addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt'>) => void
+  addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments'>) => void
+  addComment: (suggestionId: string, content: string, author: string) => void
   upvoteSuggestion: (id: string) => void // Toggles upvote on/off
   updateSuggestionStatus: (id: string, status: Suggestion['status']) => void
   updateThemeColors: (colors: Partial<ThemeColors>) => void
@@ -25,7 +26,21 @@ const initialSuggestions: Suggestion[] = [
     description: 'Add a dark mode option for better user experience in low-light environments.',
     upvotes: 15,
     status: 'In Progress',
-    createdAt: new Date('2024-01-15')
+    createdAt: new Date('2024-01-15'),
+    comments: [
+      {
+        id: '1',
+        content: 'This would be really helpful for night-time usage!',
+        author: 'User123',
+        createdAt: new Date('2024-01-16')
+      },
+      {
+        id: '2',
+        content: 'I agree, especially for users who work late hours.',
+        author: 'Developer456',
+        createdAt: new Date('2024-01-17')
+      }
+    ]
   },
   {
     id: '2',
@@ -33,7 +48,15 @@ const initialSuggestions: Suggestion[] = [
     description: 'Create a mobile application for iOS and Android platforms.',
     upvotes: 23,
     status: 'Queued',
-    createdAt: new Date('2024-01-10')
+    createdAt: new Date('2024-01-10'),
+    comments: [
+      {
+        id: '3',
+        content: 'This would make the platform much more accessible!',
+        author: 'MobileUser',
+        createdAt: new Date('2024-01-12')
+      }
+    ]
   },
   {
     id: '3',
@@ -41,7 +64,8 @@ const initialSuggestions: Suggestion[] = [
     description: 'Implement advanced search functionality with filters and sorting options.',
     upvotes: 8,
     status: 'Completed',
-    createdAt: new Date('2024-01-05')
+    createdAt: new Date('2024-01-05'),
+    comments: []
   }
 ]
 
@@ -84,13 +108,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const addSuggestion = (suggestion: Omit<Suggestion, 'id' | 'createdAt'>) => {
+  const addSuggestion = (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments'>) => {
     const newSuggestion: Suggestion = {
       ...suggestion,
       id: Date.now().toString(),
-      createdAt: new Date()
+      createdAt: new Date(),
+      comments: []
     }
     setSuggestions(prev => [newSuggestion, ...prev])
+  }
+
+  const addComment = (suggestionId: string, content: string, author: string) => {
+    const newComment: Comment = {
+      id: Date.now().toString(),
+      content,
+      author,
+      createdAt: new Date()
+    }
+    
+    setSuggestions(prev =>
+      prev.map(suggestion =>
+        suggestion.id === suggestionId
+          ? { ...suggestion, comments: [...suggestion.comments, newComment] }
+          : suggestion
+      )
+    )
   }
 
   const hasUserUpvoted = (id: string): boolean => {
@@ -175,6 +217,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         userUpvotes,
         selectedPost,
         addSuggestion,
+        addComment,
         upvoteSuggestion,
         updateSuggestionStatus,
         updateThemeColors,
