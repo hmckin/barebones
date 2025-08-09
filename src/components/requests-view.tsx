@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/contexts/app-context'
+import { useTickets } from '@/hooks/use-tickets'
 import { getStatusColor } from '@/lib/utils'
 
 const ProgressBadge = ({ status }: { status: string }) => {
@@ -28,45 +29,77 @@ interface RequestsViewProps {
   sortBy: string
   showStatus?: boolean
   searchQuery?: string
+  onSortChange?: (sortBy: string) => void
 }
 
-export function RequestsView({ sortBy, showStatus = true, searchQuery = '' }: RequestsViewProps) {
-  const { suggestions, upvoteSuggestion, hasUserUpvoted, userUpvotes, selectPost } = useApp()
+export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSortChange }: RequestsViewProps) {
+  const { upvoteSuggestion, hasUserUpvoted, selectPost } = useApp()
+  const { suggestions, loading, updateSorting, updateSearch, searchInput } = useTickets()
 
-  const getSortedSuggestions = () => {
-    let filtered = [...suggestions]
-    
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(suggestion => 
-        suggestion.title.toLowerCase().includes(query) ||
-        suggestion.description.toLowerCase().includes(query) ||
-        suggestion.status.toLowerCase().includes(query)
-      )
+  // Update sorting when props change
+  React.useEffect(() => {
+    if (sortBy === 'trending') {
+      updateSorting('upvotes', 'desc')
+    } else if (sortBy === 'newest') {
+      updateSorting('createdAt', 'desc')
+    } else if (sortBy === 'oldest') {
+      updateSorting('createdAt', 'asc')
     }
-    
-    // Sort the filtered results
-    switch (sortBy) {
-      case 'trending':
-        return filtered.sort((a, b) => b.upvotes - a.upvotes)
-      case 'newest':
-        return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      case 'oldest':
-        return filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      case 'alphabetical':
-        return filtered.sort((a, b) => a.title.localeCompare(b.title))
-      case 'reverse-alphabetical':
-        return filtered.sort((a, b) => b.title.localeCompare(a.title))
-      default:
-        return filtered
+  }, [sortBy, updateSorting])
+
+  // Update search when prop changes (for external search triggers)
+  React.useEffect(() => {
+    if (searchQuery !== searchInput) {
+      updateSearch(searchQuery)
     }
+  }, [searchQuery, updateSearch, searchInput])
+
+  // Add search header to the component
+  const handleSearchChange = (query: string) => {
+    updateSearch(query)
   }
 
-  const sortedSuggestions = getSortedSuggestions()
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i} className="bg-transparent border-0 shadow-none">
+            <CardContent className="px-5">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  const sortedSuggestions = suggestions
 
   return (
     <div className="space-y-0">
+      {/* Search Header */}
+      <div className="mb-6">
+        <RequestsHeader 
+          sortBy={sortBy} 
+          onSortChange={(newSortBy) => {
+            if (newSortBy === 'trending') {
+              updateSorting('upvotes', 'desc')
+            } else if (newSortBy === 'newest') {
+              updateSorting('createdAt', 'desc')
+            } else if (newSortBy === 'oldest') {
+              updateSorting('createdAt', 'asc')
+            }
+            // Call the parent callback if provided
+            onSortChange?.(newSortBy)
+          }}
+          searchQuery={searchInput}
+          onSearchChange={handleSearchChange}
+        />
+      </div>
+      
       {sortedSuggestions.map((suggestion, index) => {
         const isUpvoted = hasUserUpvoted(suggestion.id)
         
@@ -161,12 +194,12 @@ export function RequestsView({ sortBy, showStatus = true, searchQuery = '' }: Re
       })}
 
       {sortedSuggestions.length === 0 && (
-        <Card className="bg-transparent hover:bg-white dark:hover:bg-gray-800 border-0 hover:border hover:border-gray-200 dark:hover:border-gray-700 shadow-none transition-colors outline-none">
+        <Card className="bg-transparent shadow-none transition-colors outline-none">
           <CardContent className="p-8 text-center">
             <p className="text-gray-500 dark:text-gray-400">
               {searchQuery.trim() 
                 ? `No posts found matching "${searchQuery}"`
-                : "No suggestions yet. Be the first to create a post!"
+                : "Be the first to create a post!"
               }
             </p>
           </CardContent>

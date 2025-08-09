@@ -1,0 +1,224 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../auth/[...nextauth]/route'
+
+const prisma = new PrismaClient()
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    
+    // Pagination
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const offset = (page - 1) * limit
+    
+    // Filtering
+    const status = searchParams.get('status')
+    const search = searchParams.get('search')
+    const authorId = searchParams.get('authorId')
+    
+    // Sorting
+    const sortBy = searchParams.get('sortBy') || 'createdAt'
+    const sortOrder = searchParams.get('sortOrder') || 'desc'
+    
+    // Build where clause
+    const where: any = {}
+    
+    if (status) {
+      where.status = status
+    }
+    
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ]
+    }
+    
+    if (authorId) {
+      where.authorId = authorId
+    }
+    
+    // Build orderBy clause
+    const orderBy: any = {}
+    if (sortBy === 'upvotes') {
+      orderBy.upvotesCount = sortOrder
+    } else if (sortBy === 'trending') {
+      // For trending, we'll sort by upvotes in the last 7 days
+      const weekAgo = new Date()
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      
+      where.createdAt = {
+        gte: weekAgo
+      }
+      orderBy.upvotesCount = 'desc'
+    } else {
+      orderBy[sortBy] = sortOrder
+    }
+    
+    // Get tickets with pagination
+    const [tickets, total] = await Promise.all([
+      prisma.ticket.findMany({
+        where,
+        orderBy,
+        skip: offset,
+        take: limit,
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true
+            }
+          },
+          comments: {
+            select: {
+              id: true
+            }
+          },
+          votes: {
+            select: {
+              userId: true
+            }
+          },
+          _count: {
+            select: {
+              comments: true,
+              votes: true
+            }
+          }
+        }
+      }),
+      prisma.ticket.count({ where })
+    ])
+    
+    // Transform data to match frontend expectations
+    const transformedTickets = tickets.map(ticket => ({
+      id: ticket.id,
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status,
+      upvotes: ticket.upvotesCount,
+      createdAt: ticket.createdAt,
+      updatedAt: ticket.updatedAt,
+      author: ticket.author,
+      comments: ticket.comments,
+      images: ticket.imageUrl ? [{
+        id: `img-${ticket.id}`,
+        name: 'uploaded-image',
+        url: ticket.imageUrl,
+        size: 0,
+        type: 'image/*',
+        uploadedAt: ticket.createdAt
+      }] : [],
+      _count: ticket._count
+    }))
+    
+    return NextResponse.json({
+      tickets: transformedTickets,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    })
+    
+  } catch (error) {
+    console.error('Error fetching tickets:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch tickets' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    const body = await request.json()
+    const { title, description, imageUrl } = body
+    
+    // Validation
+    if (!title || !title.trim()) {
+      return NextResponse.json(
+        { error: 'Title is required' },
+        { status: 400 }
+      )
+    }
+    
+    // Get user ID
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Create ticket
+    const ticket = await prisma.ticket.create({
+      data: {
+        title: title.trim(),
+        description: description?.trim() || '',
+        imageUrl,
+        authorId: user.id,
+        status: 'Queued'
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true
+          }
+        }
+      }
+    })
+    
+    // Transform to match frontend expectations
+    const transformedTicket = {
+      id: ticket.id,
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status,
+      upvotes: 0,
+      createdAt: ticket.createdAt,
+      updatedAt: ticket.updatedAt,
+      author: ticket.author,
+      comments: [],
+      images: ticket.imageUrl ? [{
+        id: `img-${ticket.id}`,
+        name: 'uploaded-image',
+        url: ticket.imageUrl,
+        size: 0,
+        type: 'image/*',
+        uploadedAt: ticket.createdAt
+      }] : []
+    }
+    
+    return NextResponse.json(transformedTicket, { status: 201 })
+    
+  } catch (error) {
+    console.error('Error creating ticket:', error)
+    return NextResponse.json(
+      { error: 'Failed to create ticket' },
+      { status: 500 }
+    )
+  }
+} 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { AuthButton } from '@/components/auth-button'
 import { CreatePost } from '@/components/create-post'
 import { RequestsView, RequestsHeader } from '@/components/requests-view'
 import { ExpandedPost } from '@/components/expanded-post'
@@ -11,12 +12,11 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useApp } from '@/contexts/app-context'
 
 export default function Home() {
-  const { themeColors, selectedPost, logo, selectPost } = useApp()
+  const { themeColors, selectedPost, logo, selectPost, loading } = useApp()
   const [mounted, setMounted] = useState(false)
   const [sortBy, setSortBy] = useState('trending')
   const [activeTab, setActiveTab] = useState('requests')
   const [searchQuery, setSearchQuery] = useState('')
-  const [suggestionsSearchQuery, setSuggestionsSearchQuery] = useState('')
 
   useEffect(() => {
     setMounted(true)
@@ -105,6 +105,7 @@ export default function Home() {
             </div>
             
             <div className="flex items-end space-x-4 pt-10">
+              <AuthButton />
               <ThemeToggle />
             </div>
           </div>
@@ -143,24 +144,17 @@ export default function Home() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
                     {/* Left Column - Create Post Form */}
                     <div className="lg:col-span-1">
-                      <CreatePost 
-                        onSearchChange={setSuggestionsSearchQuery}
-                      />
+                      <CreatePost />
                     </div>
                     
                     {/* Right Column - Trending Posts */}
                     <div className="lg:col-span-2 flex flex-col h-full min-h-0">
-                      <RequestsHeader 
-                        sortBy={sortBy} 
-                        onSortChange={setSortBy} 
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
-                      />
                       <div className="flex-1 overflow-y-auto pt-6 px-2 pr-6">
                         <RequestsView 
                           sortBy={sortBy} 
                           showStatus={false} 
-                          searchQuery={`${searchQuery} ${suggestionsSearchQuery}`.trim()}
+                          searchQuery={searchQuery}
+                          onSortChange={setSortBy}
                         />
                       </div>
                     </div>

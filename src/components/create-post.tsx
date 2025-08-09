@@ -11,37 +11,28 @@ import { useApp } from '@/contexts/app-context'
 import { ImageAttachment } from '@/types'
 
 interface CreatePostProps {
-  onSearchChange?: (query: string) => void
+  // Removed onSearchChange as it's not needed for creating posts
 }
 
-export function CreatePost({ onSearchChange }: CreatePostProps) {
-  const { addSuggestion } = useApp()
+export function CreatePost({}: CreatePostProps) {
+  const { addSuggestion, loading } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [errors, setErrors] = useState<{ title?: string }>({})
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value
     setTitle(newTitle)
-    
-    // Update search query based on title and description
-    if (onSearchChange) {
-      const searchText = `${newTitle} ${description}`.trim()
-      onSearchChange(searchText)
-    }
   }
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newDescription = e.target.value
     setDescription(newDescription)
     
-    // Update search query based on title and description
-    if (onSearchChange) {
-      const searchText = `${title} ${newDescription}`.trim()
-      onSearchChange(searchText)
-    }
+
   }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,7 +83,7 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     // Validation
@@ -106,26 +97,31 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
       return
     }
 
-    addSuggestion({
-      title: title.trim(),
-      description: description.trim(),
-      upvotes: 0,
-      status: 'Queued'
-    }, attachedImages)
+    setIsSubmitting(true)
+    try {
+      await addSuggestion({
+        title: title.trim(),
+        description: description.trim(),
+        upvotes: 0,
+        status: 'Queued'
+      }, attachedImages)
 
-    // Reset form
-    setTitle('')
-    setDescription('')
-    setErrors({})
-    
-    // Clear search when form is submitted
-    if (onSearchChange) {
-      onSearchChange('')
+      // Reset form
+      setTitle('')
+      setDescription('')
+      setErrors({})
+      
+
+      
+      // Clean up image URLs and reset attachments
+      attachedImages.forEach(img => URL.revokeObjectURL(img.url))
+      setAttachedImages([])
+    } catch (error) {
+      console.error('Failed to create post:', error)
+      // You might want to show an error message to the user
+    } finally {
+      setIsSubmitting(false)
     }
-    
-    // Clean up image URLs and reset attachments
-    attachedImages.forEach(img => URL.revokeObjectURL(img.url))
-    setAttachedImages([])
   }
 
   const formatFileSize = (bytes: number) => {
@@ -239,8 +235,12 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
                 </Badge>
               )}
             </div>
-            <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">
-              CREATE POST
+            <Button 
+              type="submit" 
+              className="bg-primary hover:bg-primary/90 text-white"
+              disabled={isSubmitting || loading}
+            >
+              {isSubmitting ? 'CREATING...' : 'CREATE POST'}
             </Button>
           </div>
         </form>

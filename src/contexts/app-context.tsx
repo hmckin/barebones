@@ -1,7 +1,8 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { Suggestion, ThemeColors, UserUpvotes, Comment, ImageAttachment, Logo } from '@/types'
+import { ticketsApi, commentsApi, votesApi, uploadsApi } from '@/lib/api'
 
 interface AppContextType {
   suggestions: Suggestion[]
@@ -11,14 +12,16 @@ interface AppContextType {
   previousTab: string
   isSystemAdmin: boolean
   logo: Logo | null
-  addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => void
-  addComment: (suggestionId: string, content: string, author: string) => void
-  upvoteSuggestion: (id: string) => void // Toggles upvote on/off
+  loading: boolean
+  addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => Promise<void>
+  addComment: (suggestionId: string, content: string, author: string) => Promise<void>
+  upvoteSuggestion: (id: string) => Promise<void> // Toggles upvote on/off
   updateSuggestionStatus: (id: string, status: Suggestion['status']) => void
   updateThemeColors: (colors: Partial<ThemeColors>) => void
   updateLogo: (logo: Logo) => void
   hasUserUpvoted: (id: string) => boolean
   selectPost: (post: Suggestion | null, fromTab?: string) => void
+  loadTickets: (filters?: any) => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -112,12 +115,13 @@ const defaultUserUpvotes: UserUpvotes = {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [suggestions, setSuggestions] = useState<Suggestion[]>(initialSuggestions)
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [themeColors, setThemeColors] = useState<ThemeColors>(defaultThemeColors)
   const [userUpvotes, setUserUpvotes] = useState<UserUpvotes>(defaultUserUpvotes)
   const [selectedPost, setSelectedPost] = useState<Suggestion | null>(null)
   const [previousTab, setPreviousTab] = useState<string>('posts')
   const [isSystemAdmin] = useState<boolean>(true) // Temporary FE flag, later replaced with BE role check
+  const [loading, setLoading] = useState<boolean>(false)
   const [logo, setLogo] = useState<Logo | null>({
     url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiB2aWV3Qm94PSIwIDAgMjI1IDc1IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiBmaWxsPSIjMDAwIi8+Cjwvc3ZnPgo=',
     redirectUrl: undefined
@@ -156,32 +160,74 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const addSuggestion = (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => {
-    const newSuggestion: Suggestion = {
-      ...suggestion,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      comments: [],
-      images: images || []
+  // Load initial tickets
+  useEffect(() => {
+    loadTickets()
+  }, [])
+
+  const addSuggestion = async (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => {
+    try {
+      // Upload images first if any
+      let imageUrl: string | undefined
+      if (images && images.length > 0) {
+        // For now, we'll use the first image as the main image
+        // In a real app, you might want to handle multiple images differently
+        const imageFile = await fetch(images[0].url).then(r => r.blob())
+        const file = new File([imageFile], images[0].name, { type: images[0].type })
+        
+        const uploadResult = await uploadsApi.uploadImage(file)
+        if (uploadResult.error) {
+          throw new Error(uploadResult.error)
+        }
+        imageUrl = uploadResult.data?.imageUrl
+      }
+      
+      // Create ticket via API
+      const result = await ticketsApi.createTicket({
+        title: suggestion.title,
+        description: suggestion.description,
+        imageUrl
+      })
+      
+      if (result.error) {
+        throw new Error(result.error)
+      }
+      
+      if (result.data) {
+        // Add to local state
+        setSuggestions(prev => [result.data!, ...prev])
+      }
+    } catch (error) {
+      console.error('Failed to create suggestion:', error)
+      // You might want to show a toast notification here
     }
-    setSuggestions(prev => [newSuggestion, ...prev])
   }
 
-  const addComment = (suggestionId: string, content: string, author: string) => {
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      content,
-      author,
-      createdAt: new Date()
+  const addComment = async (suggestionId: string, content: string, author: string) => {
+    try {
+      const result = await commentsApi.createComment({
+        ticketId: suggestionId,
+        content
+      })
+      
+      if (result.error) {
+        throw new Error(result.error)
+      }
+      
+      if (result.data) {
+        // Add to local state
+        setSuggestions(prev =>
+          prev.map(suggestion =>
+            suggestion.id === suggestionId
+              ? { ...suggestion, comments: [...suggestion.comments, result.data!] }
+              : suggestion
+          )
+        )
+      }
+    } catch (error) {
+      console.error('Failed to create comment:', error)
+      // You might want to show a toast notification here
     }
-    
-    setSuggestions(prev =>
-      prev.map(suggestion =>
-        suggestion.id === suggestionId
-          ? { ...suggestion, comments: [...suggestion.comments, newComment] }
-          : suggestion
-      )
-    )
   }
 
   const hasUserUpvoted = (id: string): boolean => {
@@ -190,47 +236,60 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 
 
-  const upvoteSuggestion = (id: string) => {
-    const isUpvoted = hasUserUpvoted(id)
-    
-    if (isUpvoted) {
-      // Remove upvote
-      setSuggestions(prev =>
-        prev.map(suggestion =>
-          suggestion.id === id
-            ? { ...suggestion, upvotes: Math.max(0, suggestion.upvotes - 1) }
-            : suggestion
-        )
-      )
-
-      // Update user upvotes
-      const newUserUpvotes: UserUpvotes = {
-        upvotedPosts: userUpvotes.upvotedPosts.filter(postId => postId !== id)
+  const upvoteSuggestion = async (id: string) => {
+    try {
+      const result = await votesApi.toggleVote({ ticketId: id })
+      
+      if (result.error) {
+        throw new Error(result.error)
       }
       
-      setUserUpvotes(newUserUpvotes)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('userUpvotes', JSON.stringify(newUserUpvotes))
-      }
-    } else {
-      // Add upvote
-      setSuggestions(prev =>
-        prev.map(suggestion =>
-          suggestion.id === id
-            ? { ...suggestion, upvotes: suggestion.upvotes + 1 }
-            : suggestion
-        )
-      )
+      if (result.data) {
+        const isUpvoted = hasUserUpvoted(id)
+        
+        if (isUpvoted) {
+          // Remove upvote
+          setSuggestions(prev =>
+            prev.map(suggestion =>
+              suggestion.id === id
+                ? { ...suggestion, upvotes: Math.max(0, suggestion.upvotes - 1) }
+                : suggestion
+            )
+          )
 
-      // Update user upvotes
-      const newUserUpvotes: UserUpvotes = {
-        upvotedPosts: [...userUpvotes.upvotedPosts, id]
+          // Update user upvotes
+          const newUserUpvotes: UserUpvotes = {
+            upvotedPosts: userUpvotes.upvotedPosts.filter(postId => postId !== id)
+          }
+          
+          setUserUpvotes(newUserUpvotes)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('userUpvotes', JSON.stringify(newUserUpvotes))
+          }
+        } else {
+          // Add upvote
+          setSuggestions(prev =>
+            prev.map(suggestion =>
+              suggestion.id === id
+                ? { ...suggestion, upvotes: suggestion.upvotes + 1 }
+                : suggestion
+            )
+          )
+
+          // Update user upvotes
+          const newUserUpvotes: UserUpvotes = {
+            upvotedPosts: [...userUpvotes.upvotedPosts, id]
+          }
+          
+          setUserUpvotes(newUserUpvotes)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('userUpvotes', JSON.stringify(newUserUpvotes))
+          }
+        }
       }
-      
-      setUserUpvotes(newUserUpvotes)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('userUpvotes', JSON.stringify(newUserUpvotes))
-      }
+    } catch (error) {
+      console.error('Failed to toggle vote:', error)
+      // You might want to show a toast notification here
     }
   }
 
@@ -266,6 +325,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const loadTickets = useCallback(async (filters: any = {}) => {
+    try {
+      setLoading(true)
+      const result = await ticketsApi.getTickets(filters)
+      
+      if (result.error) {
+        throw new Error(result.error)
+      }
+      
+      if (result.data) {
+        setSuggestions(result.data.tickets)
+      }
+    } catch (error) {
+      console.error('Failed to load tickets:', error)
+      // Fallback to initial suggestions if API fails
+      setSuggestions(initialSuggestions)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   return (
     <AppContext.Provider
       value={{
@@ -276,6 +356,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         previousTab,
         isSystemAdmin,
         logo,
+        loading,
         addSuggestion,
         addComment,
         upvoteSuggestion,
@@ -283,7 +364,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateThemeColors,
         updateLogo,
         hasUserUpvoted,
-        selectPost
+        selectPost,
+        loadTickets
       }}
     >
       {children}
