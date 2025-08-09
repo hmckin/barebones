@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useApp } from '@/contexts/app-context'
 import { ColorPicker } from '@/components/color-picker'
+import { getStatusColor } from '@/lib/utils'
 
 interface SystemAdminModalProps {
   isOpen: boolean
@@ -27,19 +28,6 @@ const mockAdmins: AdminUser[] = [
   { id: '1', name: 'John Doe', email: 'john@example.com', avatar: '/api/placeholder/32/32' },
   { id: '2', name: 'Jane Smith', email: 'jane@example.com', avatar: '/api/placeholder/32/32' },
 ]
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'In Progress':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-    case 'Completed':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-    case 'Queued':
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-  }
-}
 
 const ProgressBadge = ({ status }: { status: string }) => {
   return (

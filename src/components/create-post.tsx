@@ -10,11 +10,11 @@ import { Image as ImageIcon, X } from 'lucide-react'
 import { useApp } from '@/contexts/app-context'
 import { ImageAttachment } from '@/types'
 
-interface SuggestionsBoardProps {
+interface CreatePostProps {
   onSearchChange?: (query: string) => void
 }
 
-export function SuggestionsBoard({ onSearchChange }: SuggestionsBoardProps) {
+export function CreatePost({ onSearchChange }: CreatePostProps) {
   const { addSuggestion } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -141,7 +141,7 @@ export function SuggestionsBoard({ onSearchChange }: SuggestionsBoardProps) {
       <CardContent className="px-6">
         {/* Header */}
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold mb-2 pb-2">Suggest a Feature</h2>
+          <h2 className="text-2xl font-bold mb-2 pb-2">Create a Post</h2>
         </div>
 
         {/* Form */}

@@ -8,7 +8,7 @@ interface AppContextType {
   themeColors: ThemeColors
   userUpvotes: UserUpvotes
   selectedPost: Suggestion | null
-  previousTab: string | null
+  previousTab: string
   isSystemAdmin: boolean
   logo: Logo | null
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => void
@@ -116,7 +116,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [themeColors, setThemeColors] = useState<ThemeColors>(defaultThemeColors)
   const [userUpvotes, setUserUpvotes] = useState<UserUpvotes>(defaultUserUpvotes)
   const [selectedPost, setSelectedPost] = useState<Suggestion | null>(null)
-  const [previousTab, setPreviousTab] = useState<string | null>(null)
+  const [previousTab, setPreviousTab] = useState<string>('posts')
   const [isSystemAdmin] = useState<boolean>(true) // Temporary FE flag, later replaced with BE role check
   const [logo, setLogo] = useState<Logo | null>({
     url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiB2aWV3Qm94PSIwIDAgMjI1IDc1IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiBmaWxsPSIjMDAwIi8+Cjwvc3ZnPgo=',
@@ -188,9 +188,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return userUpvotes.upvotedPosts.includes(id)
   }
 
-  const canUpvote = (id: string): boolean => {
-    return !hasUserUpvoted(id)
-  }
+
 
   const upvoteSuggestion = (id: string) => {
     const isUpvoted = hasUserUpvoted(id)

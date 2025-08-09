@@ -3,15 +3,15 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { SuggestionsBoard } from '@/components/suggestions-board'
-import { TrendingPosts, PostsHeader } from '@/components/trending-posts'
+import { CreatePost } from '@/components/create-post'
+import { RequestsView, RequestsHeader } from '@/components/requests-view'
 import { ExpandedPost } from '@/components/expanded-post'
 import { RoadmapView } from '@/components/roadmap-view'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useApp } from '@/contexts/app-context'
 
 export default function Home() {
-  const { themeColors, selectedPost, logo } = useApp()
+  const { themeColors, selectedPost, logo, selectPost } = useApp()
   const [mounted, setMounted] = useState(false)
   const [sortBy, setSortBy] = useState('trending')
   const [activeTab, setActiveTab] = useState('requests')
@@ -30,6 +30,13 @@ export default function Home() {
       root.style.setProperty('--custom-secondary', themeColors.secondary)
     }
   }, [themeColors, mounted])
+
+  // Close expanded post when switching tabs
+  useEffect(() => {
+    if (selectedPost) {
+      selectPost(null)
+    }
+  }, [activeTab])
 
   const handleLogoClick = () => {
     if (logo?.redirectUrl) {
@@ -136,21 +143,21 @@ export default function Home() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
                     {/* Left Column - Create Post Form */}
                     <div className="lg:col-span-1">
-                      <SuggestionsBoard 
+                      <CreatePost 
                         onSearchChange={setSuggestionsSearchQuery}
                       />
                     </div>
                     
                     {/* Right Column - Trending Posts */}
                     <div className="lg:col-span-2 flex flex-col h-full min-h-0">
-                      <PostsHeader 
+                      <RequestsHeader 
                         sortBy={sortBy} 
                         onSortChange={setSortBy} 
                         searchQuery={searchQuery}
                         onSearchChange={setSearchQuery}
                       />
                       <div className="flex-1 overflow-y-auto pt-6 px-2 pr-6">
-                        <TrendingPosts 
+                        <RequestsView 
                           sortBy={sortBy} 
                           showStatus={false} 
                           searchQuery={`${searchQuery} ${suggestionsSearchQuery}`.trim()}

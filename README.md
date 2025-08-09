@@ -1,12 +1,13 @@
-# barebones - Feature Suggestions & Progress Tracking
+# barebones - Feature Requests & Roadmap Management
 
-A modern Next.js application for managing feature suggestions and tracking their progress through different stages.
+A modern Next.js application for managing feature requests and tracking their progress through a visual roadmap interface.
 
 ## Features
 
 ### 🎯 Core Functionality
-- **Suggestions Board**: View, upvote, and submit new feature suggestions
-- **Progress View**: Track suggestions grouped by status (Queued, In Progress, Completed)
+- **Create Post**: Submit new feature suggestions with title, description, and image attachments
+- **Requests View**: View, upvote, and manage feature requests with sorting and search
+- **Roadmap View**: Track suggestions grouped by status (Queued, In Progress, Completed)
 - **Status Management**: Update suggestion status with dropdown selectors
 
 ### 🎨 UI/UX Features
@@ -66,9 +67,11 @@ src/
 ├── components/
 │   ├── ui/                  # shadcn/ui components
 │   ├── color-picker.tsx     # Color picker component
-│   ├── progress-view.tsx    # Progress tracking view
-│   ├── suggestions-board.tsx # Suggestions management
-│   ├── theme-settings.tsx   # Theme customization
+│   ├── create-post.tsx      # Create new feature suggestions
+│   ├── expanded-post.tsx    # Detailed view of individual posts
+│   ├── requests-view.tsx    # Display and manage feature requests
+│   ├── roadmap-view.tsx     # Roadmap view for progress tracking
+│   ├── system-admin-modal.tsx # System administration modal
 │   └── theme-toggle.tsx     # Theme switcher
 ├── contexts/
 │   └── app-context.tsx      # Global state management
@@ -78,16 +81,22 @@ src/
 
 ## Usage
 
-### Suggestions Board
-- View all feature suggestions sorted by upvotes
-- Click "New Suggestion" to submit a feature request
-- Upvote existing suggestions with the thumbs up button
-- Each suggestion shows title, description, status, and creation date
+### Create Post
+- Submit new feature suggestions with title and description
+- Attach images to provide visual context
+- Form validation ensures required fields are filled
+- Real-time search integration with the requests view
 
-### Progress View
-- See suggestions organized by status in three columns
-- Use dropdown selectors to change suggestion status
+### Requests View
+- View all feature requests with sorting options (trending, newest, oldest, alphabetical)
+- Search through requests using the search bar
+- Upvote existing suggestions with the upvote button
+- Each request shows title, description, status, upvotes, comments, and attachments
+
+### Roadmap View
+- See suggestions organized by status in a roadmap format
 - Track progress from Queued → In Progress → Completed
+- Visual representation of feature development pipeline
 
 ### Theme Customization
 - Toggle between light, dark, and system themes

@@ -14,19 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/contexts/app-context'
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'In Progress':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-    case 'Completed':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-    case 'Queued':
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-  }
-}
+import { getStatusColor } from '@/lib/utils'
 
 const ProgressBadge = ({ status }: { status: string }) => {
   return (
@@ -36,13 +24,13 @@ const ProgressBadge = ({ status }: { status: string }) => {
   )
 }
 
-interface TrendingPostsProps {
+interface RequestsViewProps {
   sortBy: string
   showStatus?: boolean
   searchQuery?: string
 }
 
-export function TrendingPosts({ sortBy, showStatus = true, searchQuery = '' }: TrendingPostsProps) {
+export function RequestsView({ sortBy, showStatus = true, searchQuery = '' }: RequestsViewProps) {
   const { suggestions, upvoteSuggestion, hasUserUpvoted, userUpvotes, selectPost } = useApp()
 
   const getSortedSuggestions = () => {
@@ -188,14 +176,14 @@ export function TrendingPosts({ sortBy, showStatus = true, searchQuery = '' }: T
   )
 }
 
-interface PostsHeaderProps {
+interface RequestsHeaderProps {
   sortBy: string
   onSortChange: (sortBy: string) => void
   searchQuery: string
   onSearchChange: (query: string) => void
 }
 
-export function PostsHeader({ sortBy, onSortChange, searchQuery, onSearchChange }: PostsHeaderProps) {
+export function RequestsHeader({ sortBy, onSortChange, searchQuery, onSearchChange }: RequestsHeaderProps) {
   const [isSearchVisible, setIsSearchVisible] = useState(false)
   
   const getSortLabel = () => {
