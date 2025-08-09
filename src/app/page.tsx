@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useApp } from '@/contexts/app-context'
 
 export default function Home() {
-  const { themeColors, selectedPost } = useApp()
+  const { themeColors, selectedPost, logo } = useApp()
   const [mounted, setMounted] = useState(false)
   const [sortBy, setSortBy] = useState('trending')
   const [activeTab, setActiveTab] = useState('requests')
@@ -31,6 +31,12 @@ export default function Home() {
     }
   }, [themeColors, mounted])
 
+  const handleLogoClick = () => {
+    if (logo?.redirectUrl) {
+      window.open(logo.redirectUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
   if (!mounted) {
     return null
   }
@@ -39,14 +45,26 @@ export default function Home() {
     <div className={`min-h-screen bg-background ${selectedPost ? 'h-screen overflow-hidden' : ''}`}>
       {/* Header */}
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4 pb-1 pt-4">
+        <div className="container mx-auto px-4">
           <div className="flex items-start justify-between">
             <div className="flex flex-col space-y-2">
-              <div className="flex items-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-bone">
-                  <path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z"/>
-                </svg>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">barebones</h1>
+              <div className="flex items-center space-x-2 w-[225px] h-[75px] overflow-hidden">
+                {logo?.url ? (
+                  <button
+                    onClick={handleLogoClick}
+                    className={`flex items-center justify-center ${logo.redirectUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                  >
+                    <img 
+                      src={logo.url} 
+                      alt="Logo" 
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </button>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-bone">
+                    <path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z"/>
+                  </svg>
+                )}
               </div>
               
               {/* Tabs underneath logo */}
@@ -79,7 +97,7 @@ export default function Home() {
               </Tabs>
             </div>
             
-            <div className="flex items-end space-x-4">
+            <div className="flex items-end space-x-4 pt-10">
               <ThemeToggle />
             </div>
           </div>
@@ -90,7 +108,7 @@ export default function Home() {
       <div className="container mx-auto py-8 h-[calc(100vh-120px)]">
         <AnimatePresence mode="wait">
           {/* Expanded Post View */}
-          {selectedPost && activeTab === 'requests' && (
+          {selectedPost && (
             <motion.div
               key="expanded-post"
               initial={{ opacity: 0, y: 20 }}

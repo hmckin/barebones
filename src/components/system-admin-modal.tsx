@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Settings, User, Users, FileText, Palette, Image as ImageIcon, Save, Eye, EyeOff, Search } from 'lucide-react'
+import { X, Settings, User, Users, FileText, Palette, Image as ImageIcon, Save, Eye, EyeOff, Search, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -50,13 +50,20 @@ const ProgressBadge = ({ status }: { status: string }) => {
 }
 
 export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
-  const { themeColors, updateThemeColors, suggestions, updateSuggestionStatus } = useApp()
+  const { themeColors, updateThemeColors, suggestions, updateSuggestionStatus, logo, updateLogo } = useApp()
   const [activeTab, setActiveTab] = useState('general')
   const [newAdminEmail, setNewAdminEmail] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [hiddenRequests, setHiddenRequests] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
+  const [logoRedirectUrl, setLogoRedirectUrl] = useState(logo?.redirectUrl || '')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Update logoRedirectUrl when logo changes
+  React.useEffect(() => {
+    setLogoRedirectUrl(logo?.redirectUrl || '')
+  }, [logo])
 
   // Filter suggestions based on search query
   const filteredSuggestions = useMemo(() => {
@@ -123,6 +130,48 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
       }
       return newSet
     })
+  }
+
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select only image files')
+      return
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB')
+      return
+    }
+
+    // Create object URL for preview
+    const url = URL.createObjectURL(file)
+    
+    const newLogo = {
+      url: url,
+      redirectUrl: logoRedirectUrl || undefined
+    }
+
+    updateLogo(newLogo)
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleLogoRedirectUrlChange = (url: string) => {
+    setLogoRedirectUrl(url)
+    if (logo) {
+      updateLogo({
+        ...logo,
+        redirectUrl: url || undefined
+      })
+    }
   }
 
   if (!isOpen) return null
@@ -208,11 +257,6 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                         value={themeColors.primary}
                         onChange={(color) => updateThemeColors({ primary: color })}
                       />
-                      <ColorPicker
-                        label="Secondary Color"
-                        value={themeColors.secondary}
-                        onChange={(color) => updateThemeColors({ secondary: color })}
-                      />
                     </div>
                   </div>
 
@@ -223,13 +267,47 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                     <div className="space-y-4">
                       <div>
                         <div className="flex items-center space-x-4">
-                          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
-                            <span className="text-2xl font-bold">B</span>
+                          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center overflow-hidden">
+                            {logo?.url ? (
+                              <img 
+                                src={logo.url} 
+                                alt="Logo" 
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              <span className="text-2xl font-bold">B</span>
+                            )}
                           </div>
-                          <Button variant="outline">
-                            Change Logo
-                          </Button>
+                          <div className="flex flex-col space-y-2">
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handleLogoUpload}
+                              className="hidden"
+                            />
+                            <Button 
+                              variant="outline" 
+                              onClick={() => fileInputRef.current?.click()}
+                              className="flex items-center space-x-2"
+                            >
+                              <Upload className="w-4 h-4" />
+                              <span>Upload Logo</span>
+                            </Button>
+                          </div>
                         </div>
+                      </div>
+                      
+                      {/* Redirect URL Input */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Redirect on Click
+                        </label>
+                        <Input 
+                          placeholder="Insert your URL" 
+                          value={logoRedirectUrl}
+                          onChange={(e) => handleLogoRedirectUrlChange(e.target.value)}
+                        />
                       </div>
                     </div>
                   </div>

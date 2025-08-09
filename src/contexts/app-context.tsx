@@ -1,21 +1,24 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { Suggestion, ThemeColors, UserUpvotes, Comment, ImageAttachment } from '@/types'
+import { Suggestion, ThemeColors, UserUpvotes, Comment, ImageAttachment, Logo } from '@/types'
 
 interface AppContextType {
   suggestions: Suggestion[]
   themeColors: ThemeColors
   userUpvotes: UserUpvotes
   selectedPost: Suggestion | null
+  previousTab: string | null
   isSystemAdmin: boolean
+  logo: Logo | null
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => void
   addComment: (suggestionId: string, content: string, author: string) => void
   upvoteSuggestion: (id: string) => void // Toggles upvote on/off
   updateSuggestionStatus: (id: string, status: Suggestion['status']) => void
   updateThemeColors: (colors: Partial<ThemeColors>) => void
+  updateLogo: (logo: Logo) => void
   hasUserUpvoted: (id: string) => boolean
-  selectPost: (post: Suggestion | null) => void
+  selectPost: (post: Suggestion | null, fromTab?: string) => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -113,7 +116,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [themeColors, setThemeColors] = useState<ThemeColors>(defaultThemeColors)
   const [userUpvotes, setUserUpvotes] = useState<UserUpvotes>(defaultUserUpvotes)
   const [selectedPost, setSelectedPost] = useState<Suggestion | null>(null)
+  const [previousTab, setPreviousTab] = useState<string | null>(null)
   const [isSystemAdmin] = useState<boolean>(true) // Temporary FE flag, later replaced with BE role check
+  const [logo, setLogo] = useState<Logo | null>({
+    url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiB2aWV3Qm94PSIwIDAgMjI1IDc1IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiBmaWxsPSIjMDAwIi8+Cjwvc3ZnPgo=',
+    redirectUrl: undefined
+  })
 
   // Load theme colors and user upvotes from localStorage on mount
   useEffect(() => {
@@ -134,6 +142,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setUserUpvotes(JSON.parse(savedUpvotes))
         } catch (error) {
           console.error('Failed to parse saved user upvotes:', error)
+        }
+      }
+
+      const savedLogo = localStorage.getItem('logo')
+      if (savedLogo) {
+        try {
+          setLogo(JSON.parse(savedLogo))
+        } catch (error) {
+          console.error('Failed to parse saved logo:', error)
         }
       }
     }
@@ -237,8 +254,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const selectPost = (post: Suggestion | null) => {
+  const updateLogo = (newLogo: Logo) => {
+    setLogo(newLogo)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('logo', JSON.stringify(newLogo))
+    }
+  }
+
+  const selectPost = (post: Suggestion | null, fromTab?: string) => {
     setSelectedPost(post)
+    if (fromTab) {
+      setPreviousTab(fromTab)
+    }
   }
 
   return (
@@ -248,12 +275,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         themeColors,
         userUpvotes,
         selectedPost,
+        previousTab,
         isSystemAdmin,
+        logo,
         addSuggestion,
         addComment,
         upvoteSuggestion,
         updateSuggestionStatus,
         updateThemeColors,
+        updateLogo,
         hasUserUpvoted,
         selectPost
       }}

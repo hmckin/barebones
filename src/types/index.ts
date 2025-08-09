@@ -32,4 +32,9 @@ export interface ThemeColors {
 
 export interface UserUpvotes {
   upvotedPosts: string[]
+}
+
+export interface Logo {
+  url: string
+  redirectUrl?: string
 } 

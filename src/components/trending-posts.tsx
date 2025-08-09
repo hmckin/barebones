@@ -103,9 +103,9 @@ export function TrendingPosts({ sortBy, showStatus = true, searchQuery = '' }: T
           >
             <Card 
               className="bg-transparent hover:bg-white dark:hover:bg-gray-800 border-0 hover:border hover:border-gray-200 dark:hover:border-gray-700 shadow-none transition-colors outline-none cursor-pointer"
-              onClick={() => selectPost(suggestion)}
+                              onClick={() => selectPost(suggestion, 'requests')}
             >
-            <CardContent className="p-1">
+            <CardContent className="px-5">
               <div className="flex space-x-4">
                 {/* Upvote Section */}
                 <div className="flex flex-col items-center space-y-1">
@@ -114,11 +114,11 @@ export function TrendingPosts({ sortBy, showStatus = true, searchQuery = '' }: T
                       e.stopPropagation()
                       upvoteSuggestion(suggestion.id)
                     }}
-                    className={`flex flex-col items-center justify-center w-12 h-12 rounded-full transition-colors ${
-                      isUpvoted
-                        ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
-                    }`}
+                            className={`flex flex-col items-center justify-center w-12 h-12 rounded-full transition-colors ${
+          isUpvoted
+            ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+            : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
+        }`}
                     title={
                       isUpvoted
                         ? 'Click to remove upvote'
