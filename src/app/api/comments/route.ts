@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { createServerSupabase } from '@/lib/supabase-server'
 
 const prisma = new PrismaClient()
 
@@ -33,7 +32,7 @@ export async function GET(request: NextRequest) {
     })
     
     // Transform to match frontend expectations
-    const transformedComments = comments.map(comment => ({
+    const transformedComments = comments.map((comment: any) => ({
       id: comment.id,
       content: comment.content,
       author: comment.author.name || comment.author.email || 'Anonymous',
@@ -53,9 +52,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const supabase = await createServerSupabase(request)
     
-    if (!session?.user?.email) {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -74,11 +75,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Get user ID
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email }
     })
     
-    if (!user) {
+    if (!dbUser) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
       data: {
         content: content.trim(),
         ticketId,
-        authorId: user.id
+        authorId: dbUser.id
       },
       include: {
         author: {

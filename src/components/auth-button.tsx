@@ -1,10 +1,12 @@
 "use client"
 
-import { useAuth } from "@/hooks/use-auth"
+import { useSupabaseAuth } from "@/contexts/supabase-auth-context"
 import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 
 export function AuthButton() {
-  const { user, isAuthenticated, isLoading, signIn, signOut } = useAuth()
+  const { user, isAuthenticated, isLoading, signOut } = useSupabaseAuth()
+  const router = useRouter()
 
   if (isLoading) {
     return (
@@ -16,7 +18,7 @@ export function AuthButton() {
 
   if (!isAuthenticated) {
     return (
-      <Button onClick={signIn} variant="outline">
+      <Button onClick={() => router.push('/auth/signin')} variant="outline">
         Sign In
       </Button>
     )
@@ -25,7 +27,7 @@ export function AuthButton() {
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm text-gray-600 dark:text-gray-400">
-        {user?.name || user?.email}
+        {user?.user_metadata?.full_name || user?.email}
       </span>
       <Button onClick={signOut} variant="outline" size="sm">
         Sign Out

@@ -128,7 +128,26 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
       setAttachedImages([])
     } catch (error) {
       console.error('Failed to create post:', error)
-      // You might want to show an error message to the user
+      
+      // Show user-friendly error message
+      let errorMessage = 'Failed to create post. Please try again.'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Storage bucket not configured')) {
+          errorMessage = 'Image upload service is not configured. Please contact support.'
+        } else if (error.message.includes('Unauthorized')) {
+          errorMessage = 'Please sign in to create posts with images.'
+        } else if (error.message.includes('policy violation')) {
+          errorMessage = 'Image upload failed due to security policy. Please try a different image.'
+        } else if (error.message.includes('File size')) {
+          errorMessage = 'Image is too large. Please use an image smaller than 5MB.'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      // You might want to show this error message to the user via a toast or alert
+      alert(errorMessage)
     } finally {
       setIsSubmitting(false)
     }

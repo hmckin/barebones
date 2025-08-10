@@ -1,16 +1,22 @@
 "use client"
 
-import { useSession, signIn, signOut } from "next-auth/react"
+import { useSupabaseAuth } from "@/contexts/supabase-auth-context"
 
 export function useAuth() {
-  const { data: session, status } = useSession()
+  const { user, session, isLoading, signIn, signOut, isAuthenticated } = useSupabaseAuth()
 
   return {
-    user: session?.user,
-    isAuthenticated: !!session,
-    isLoading: status === "loading",
-    signIn: () => signIn(),
-    signOut: () => signOut(),
-    isAdmin: session?.user?.role === "ADMIN",
+    user: user ? {
+      id: user.id,
+      name: user.user_metadata?.full_name || user.email,
+      email: user.email,
+      image: user.user_metadata?.avatar_url,
+      role: user.user_metadata?.role || 'USER'
+    } : null,
+    isAuthenticated,
+    isLoading,
+    signIn: () => signIn("", ""),
+    signOut,
+    isAdmin: user?.user_metadata?.role === "ADMIN",
   }
 } 

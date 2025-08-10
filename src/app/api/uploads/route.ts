@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { createServerSupabase } from '@/lib/supabase-server'
 import { supabase, STORAGE_BUCKET } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const supabaseAuth = await createServerSupabase(request)
     
-    if (!session?.user?.email) {
+    const { data: { user } } = await supabaseAuth.auth.getUser()
+    
+    if (!user?.email) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Please sign in to upload images' },
         { status: 401 }
       )
     }
@@ -43,6 +44,9 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now()
     const filename = `${timestamp}-${file.name}`
     
+    // Try to upload directly instead of checking bucket existence
+    // The listBuckets() call has permission issues in server context
+    
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
@@ -50,11 +54,27 @@ export async function POST(request: NextRequest) {
     
     if (error) {
       console.error('Supabase upload error:', error)
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to upload file to storage'
+      if (error.message.includes('policy')) {
+        errorMessage = 'Storage policy violation. Please check your Supabase storage policies.'
+      } else if (error.message.includes('bucket')) {
+        errorMessage = 'Storage bucket access denied. Please check your Supabase configuration.'
+      } else if (error.message.includes('not found')) {
+        errorMessage = 'Storage bucket not found. Please create the "images" bucket in your Supabase dashboard.'
+      }
+      
       return NextResponse.json(
-        { error: 'Failed to upload file to storage' },
+        { 
+          error: errorMessage,
+          details: error.message
+        },
         { status: 500 }
       )
     }
+    
+
     
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
@@ -73,7 +93,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Upload error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

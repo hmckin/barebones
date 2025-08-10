@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { createServerSupabase } from '@/lib/supabase-server'
 
 const prisma = new PrismaClient()
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const supabase = await createServerSupabase(request)
     
-    if (!session?.user?.email) {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -27,11 +28,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Get user ID
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email }
     })
     
-    if (!user) {
+    if (!dbUser) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     const existingVote = await prisma.vote.findUnique({
       where: {
         userId_ticketId: {
-          userId: user.id,
+          userId: dbUser.id,
           ticketId
         }
       }
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       await prisma.vote.delete({
         where: {
           userId_ticketId: {
-            userId: user.id,
+            userId: dbUser.id,
             ticketId
           }
         }
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
       // Add vote
       await prisma.vote.create({
         data: {
-          userId: user.id,
+          userId: dbUser.id,
           ticketId
         }
       })

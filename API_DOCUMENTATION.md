@@ -12,7 +12,7 @@ The application now uses a backend API with Prisma ORM and PostgreSQL database i
 All API routes are prefixed with `/api`
 
 ### Authentication
-Most endpoints require authentication via NextAuth.js. Include the session cookie in your requests.
+Most endpoints require authentication via Supabase. Include the Supabase session cookie in your requests.
 
 ### 1. Tickets API (`/api/tickets`)
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { signIn } from "next-auth/react"
+import { useSupabaseAuth } from "@/contexts/supabase-auth-context"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,21 +11,19 @@ export default function SignIn() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isEmailSent, setIsEmailSent] = useState(false)
+  const { signInWithEmail } = useSupabaseAuth()
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     
     try {
-      const result = await signIn("email", {
-        email,
-        redirect: false,
-      })
+      const { error } = await signInWithEmail(email)
       
-      if (result?.ok) {
+      if (!error) {
         setIsEmailSent(true)
       } else {
-        console.error("Sign in failed:", result?.error)
+        console.error("Sign in failed:", error.message)
       }
     } catch (error) {
       console.error("Sign in error:", error)
