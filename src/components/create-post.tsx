@@ -11,10 +11,10 @@ import { useApp } from '@/contexts/app-context'
 import { ImageAttachment } from '@/types'
 
 interface CreatePostProps {
-  // Removed onSearchChange as it's not needed for creating posts
+  onSearchChange?: (query: string) => void
 }
 
-export function CreatePost({}: CreatePostProps) {
+export function CreatePost({ onSearchChange }: CreatePostProps) {
   const { addSuggestion, loading } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -26,13 +26,23 @@ export function CreatePost({}: CreatePostProps) {
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value
     setTitle(newTitle)
+    
+    // Update search query to filter tickets
+    if (onSearchChange) {
+      const searchQuery = newTitle || description
+      onSearchChange(searchQuery)
+    }
   }
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newDescription = e.target.value
     setDescription(newDescription)
     
-
+    // Update search query to filter tickets
+    if (onSearchChange) {
+      const searchQuery = title || newDescription
+      onSearchChange(searchQuery)
+    }
   }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -229,11 +239,6 @@ export function CreatePost({}: CreatePostProps) {
               >
                 <ImageIcon className="size-8" />
               </Button>
-              {attachedImages.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {attachedImages.length} attached
-                </Badge>
-              )}
             </div>
             <Button 
               type="submit" 

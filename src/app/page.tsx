@@ -17,6 +17,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('trending')
   const [activeTab, setActiveTab] = useState('requests')
   const [searchQuery, setSearchQuery] = useState('')
+  const [createPostSearchQuery, setCreatePostSearchQuery] = useState('')
 
   useEffect(() => {
     setMounted(true)
@@ -144,16 +145,17 @@ export default function Home() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
                     {/* Left Column - Create Post Form */}
                     <div className="lg:col-span-1">
-                      <CreatePost />
+                      <CreatePost onSearchChange={setCreatePostSearchQuery} />
                     </div>
                     
                     {/* Right Column - Trending Posts */}
                     <div className="lg:col-span-2 flex flex-col h-full min-h-0">
-                      <div className="flex-1 overflow-y-auto pt-6 px-2 pr-6">
+                      <div className="flex-1 overflow-y-auto px-2 pr-6">
                         <RequestsView 
                           sortBy={sortBy} 
                           showStatus={false} 
                           searchQuery={searchQuery}
+                          createPostFilter={createPostSearchQuery}
                           onSortChange={setSortBy}
                         />
                       </div>

@@ -69,9 +69,15 @@ export async function POST(request: NextRequest) {
         }
       })
       
+      // Get updated upvote count
+      const updatedTicket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        select: { upvotesCount: true }
+      })
+      
       return NextResponse.json({ 
         action: 'removed',
-        upvotes: -1
+        upvotes: updatedTicket?.upvotesCount || 0
       })
     } else {
       // Add vote
@@ -92,9 +98,15 @@ export async function POST(request: NextRequest) {
         }
       })
       
+      // Get updated upvote count
+      const updatedTicket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        select: { upvotesCount: true }
+      })
+      
       return NextResponse.json({ 
         action: 'added',
-        upvotes: 1
+        upvotes: updatedTicket?.upvotesCount || 0
       })
     }
     

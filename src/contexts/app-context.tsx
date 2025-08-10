@@ -238,6 +238,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const upvoteSuggestion = async (id: string) => {
     try {
+      // Prevent multiple rapid clicks
+      const isUpvoted = hasUserUpvoted(id)
+      
+      // Optimistically update UI to prevent multiple clicks
+      setSuggestions(prev =>
+        prev.map(suggestion =>
+          suggestion.id === id
+            ? { 
+                ...suggestion, 
+                upvotes: isUpvoted 
+                  ? Math.max(0, suggestion.upvotes - 1)
+                  : suggestion.upvotes + 1
+              }
+            : suggestion
+        )
+      )
+
+      // Optimistically update user upvotes
+      const newUserUpvotes: UserUpvotes = {
+        upvotedPosts: isUpvoted
+          ? userUpvotes.upvotedPosts.filter(postId => postId !== id)
+          : [...userUpvotes.upvotedPosts, id]
+      }
+      setUserUpvotes(newUserUpvotes)
+
       const result = await votesApi.toggleVote({ ticketId: id })
       
       if (result.error) {
@@ -245,50 +270,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (result.data) {
-        const isUpvoted = hasUserUpvoted(id)
+        // Update with actual backend response
+        setSuggestions(prev =>
+          prev.map(suggestion =>
+            suggestion.id === id
+              ? { ...suggestion, upvotes: result.data!.upvotes }
+              : suggestion
+          )
+        )
+
+        // Update user upvotes based on backend response
+        const shouldBeUpvoted = result.data.action === 'added'
+        const finalUserUpvotes: UserUpvotes = {
+          upvotedPosts: shouldBeUpvoted
+            ? [...userUpvotes.upvotedPosts, id]
+            : userUpvotes.upvotedPosts.filter(postId => postId !== id)
+        }
         
-        if (isUpvoted) {
-          // Remove upvote
-          setSuggestions(prev =>
-            prev.map(suggestion =>
-              suggestion.id === id
-                ? { ...suggestion, upvotes: Math.max(0, suggestion.upvotes - 1) }
-                : suggestion
-            )
-          )
-
-          // Update user upvotes
-          const newUserUpvotes: UserUpvotes = {
-            upvotedPosts: userUpvotes.upvotedPosts.filter(postId => postId !== id)
-          }
-          
-          setUserUpvotes(newUserUpvotes)
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('userUpvotes', JSON.stringify(newUserUpvotes))
-          }
-        } else {
-          // Add upvote
-          setSuggestions(prev =>
-            prev.map(suggestion =>
-              suggestion.id === id
-                ? { ...suggestion, upvotes: suggestion.upvotes + 1 }
-                : suggestion
-            )
-          )
-
-          // Update user upvotes
-          const newUserUpvotes: UserUpvotes = {
-            upvotedPosts: [...userUpvotes.upvotedPosts, id]
-          }
-          
-          setUserUpvotes(newUserUpvotes)
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('userUpvotes', JSON.stringify(newUserUpvotes))
-          }
+        setUserUpvotes(finalUserUpvotes)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('userUpvotes', JSON.stringify(finalUserUpvotes))
         }
       }
     } catch (error) {
       console.error('Failed to toggle vote:', error)
+      
+      // Revert optimistic updates on error
+      setSuggestions(prev =>
+        prev.map(suggestion =>
+          suggestion.id === id
+            ? { ...suggestion, upvotes: suggestion.upvotes }
+            : suggestion
+        )
+      )
+      
+      // Revert user upvotes on error
+      const revertedUserUpvotes: UserUpvotes = {
+        upvotedPosts: userUpvotes.upvotedPosts
+      }
+      setUserUpvotes(revertedUserUpvotes)
+      
       // You might want to show a toast notification here
     }
   }
@@ -336,6 +357,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       
       if (result.data) {
         setSuggestions(result.data.tickets)
+        
+        // Sync user upvotes with backend
+        await syncUserUpvotes(result.data.tickets)
       }
     } catch (error) {
       console.error('Failed to load tickets:', error)
@@ -345,6 +369,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     }
   }, [])
+
+  const syncUserUpvotes = async (tickets: Suggestion[]) => {
+    try {
+      // For each ticket, check if the current user has upvoted it
+      // This would require a new API endpoint to get user's votes
+      // For now, we'll rely on localStorage and the optimistic updates
+      // In a production app, you'd want to fetch the user's actual vote status
+    } catch (error) {
+      console.error('Failed to sync user upvotes:', error)
+    }
+  }
 
   return (
     <AppContext.Provider

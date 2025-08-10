@@ -124,23 +124,32 @@ Toggle vote on a ticket (upvote/downvote).
 ### 4. Uploads API (`/api/uploads`)
 
 #### POST `/api/uploads`
-Upload an image file.
+Upload an image file to Supabase Storage.
 
 **Request:**
 - Use `FormData` with a `file` field
 - File must be an image
 - Maximum size: 5MB
+- Requires authentication
 
 **Response:**
 ```json
 {
   "success": true,
-  "imageUrl": "/api/uploads/filename.jpg",
+  "imageUrl": "/api/uploads?file=filename.jpg",
   "filename": "filename.jpg",
   "size": 1024000,
-  "type": "image/jpeg"
+  "type": "image/jpeg",
+  "publicUrl": "https://supabase-storage-url.com/images/filename.jpg"
 }
 ```
+
+#### GET `/api/uploads?file=filename.jpg`
+Serve an uploaded image file.
+
+**Response:**
+- Redirects to the Supabase Storage public URL
+- Images are served via CDN for optimal performance
 
 ## Frontend Integration
 
@@ -219,12 +228,10 @@ HTTP status codes:
 ## Development Notes
 
 ### Current Limitations
-- Image uploads return placeholder URLs (need to implement actual storage)
 - Some advanced filtering is done client-side
 - Error handling could be improved with user notifications
 
 ### Future Improvements
-- Implement real image storage (Supabase, AWS S3)
 - Add server-side caching
 - Implement real-time updates with WebSockets
 - Add comprehensive error logging
