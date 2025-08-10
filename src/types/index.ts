@@ -12,6 +12,7 @@ export interface ImageAttachment {
   size: number
   type: string
   uploadedAt: Date
+  file?: File // Store the actual File object for uploads
 }
 
 export interface Suggestion {

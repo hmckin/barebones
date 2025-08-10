@@ -23,11 +23,27 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Get user for potential future use
-  try {
-    await supabase.auth.getUser()
-  } catch (error) {
-    // Handle any auth errors silently
+  // Handle auth for API routes
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        // Ensure session is valid and refresh if needed
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession()
+        
+        if (refreshedSession) {
+          // Update cookies with refreshed session
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            // Session is valid, continue
+          }
+        }
+      }
+    } catch (error) {
+      // Handle auth errors silently for API routes
+      console.error('Middleware API auth error:', error)
+    }
   }
   
   return response

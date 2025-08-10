@@ -34,19 +34,25 @@ export function RoadmapView() {
   ]
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Roadmap</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-8">
-        {columns.map((column) => (
-          <div key={column.key} className="space-y-4">
-            <div className="text-center">
-              <Badge className={`text-xs font-medium mb-2 ${getStatusColor(column.key)}`}>
+    <div className="h-full flex flex-col">
+      {/* Fixed Headers - Not Scrollable */}
+      <div className="flex-shrink-0 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-8">
+          {columns.map((column) => (
+            <div key={column.key} className="text-center">
+              <Badge className={`text-xs font-medium ${getStatusColor(column.key)}`}>
                 {column.title.toUpperCase()}
               </Badge>
             </div>
-            
-            <div className="space-y-3">
+          ))}
+        </div>
+      </div>
+      
+      {/* Scrollable Tickets Area - Only This Scrolls */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-8">
+          {columns.map((column) => (
+            <div key={column.key} className="space-y-3">
               {groupedSuggestions[column.key]?.map((suggestion, index) => {
                 const isUpvoted = hasUserUpvoted(suggestion.id)
                 
@@ -71,7 +77,7 @@ export function RoadmapView() {
                   >
                     <Card 
                       className="bg-transparent hover:bg-white dark:hover:bg-gray-800 border-0 hover:border hover:border-gray-200 dark:hover:border-gray-700 shadow-none transition-colors outline-none cursor-pointer"
-                                               onClick={() => selectPost(suggestion, 'roadmap')}
+                      onClick={() => selectPost(suggestion, 'roadmap')}
                     >
                       <CardContent className="px-5">
                         <div className="flex space-x-4">
@@ -115,8 +121,6 @@ export function RoadmapView() {
                               </p>
                             )}
                           </div>
-
-
                         </div>
                       </CardContent>
                     </Card>
@@ -130,8 +134,8 @@ export function RoadmapView() {
                 </div>
               )}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )

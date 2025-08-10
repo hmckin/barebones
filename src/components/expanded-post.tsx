@@ -93,6 +93,34 @@ interface ExpandedPostProps {
 export function ExpandedPost({ post }: ExpandedPostProps) {
   const { hasUserUpvoted, upvoteSuggestion, selectPost, suggestions, addComment, updateSuggestionStatus, isSystemAdmin, previousTab } = useApp()
   const currentPost = suggestions.find(s => s.id === post.id) || post
+  
+  // Safety check to ensure the post exists and has required fields
+  if (!currentPost) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-gray-500 dark:text-gray-400">Post not found...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  // Safety check to ensure the post has all required properties
+  if (!currentPost.comments || !Array.isArray(currentPost.comments)) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-gray-500 dark:text-gray-400">Loading post data...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  // Safety check to ensure images array exists
+  if (!currentPost.images || !Array.isArray(currentPost.images)) {
+    currentPost.images = []
+  }
+  
   const isUpvoted = hasUserUpvoted(currentPost.id)
   const [commentContent, setCommentContent] = useState('')
   const [showImages, setShowImages] = useState(false)
@@ -245,13 +273,13 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
                 <div key={comment.id} className="flex items-start space-x-3 py-4">
                   <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                     <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                      {comment.author.charAt(0).toUpperCase()}
+                      {(comment.author || 'Anonymous').charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="font-medium text-gray-900 dark:text-gray-100">
-                        {comment.author}
+                        {comment.author || 'Anonymous'}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {new Date(comment.createdAt).toLocaleDateString()}

@@ -21,6 +21,7 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
   const [errors, setErrors] = useState<{ title?: string }>({})
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +72,8 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
         url: url,
         size: file.size,
         type: file.type,
-        uploadedAt: new Date()
+        uploadedAt: new Date(),
+        file: file // Store the actual File object for uploads
       }
 
       setAttachedImages(prev => [...prev, newImage])
@@ -121,7 +123,17 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
       setDescription('')
       setErrors({})
       
-
+      // Show success message
+      setShowSuccess(true)
+      
+      // Clear the search filter after a short delay so user can see their post
+      // This ensures they see their new post along with existing tickets
+      setTimeout(() => {
+        if (onSearchChange) {
+          onSearchChange('')
+        }
+        setShowSuccess(false)
+      }, 3000) // 3 second delay - enough time to see success, then show full list
       
       // Clean up image URLs and reset attachments
       attachedImages.forEach(img => URL.revokeObjectURL(img.url))
@@ -259,13 +271,20 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
                 <ImageIcon className="size-8" />
               </Button>
             </div>
-            <Button 
-              type="submit" 
-              className="bg-primary hover:bg-primary/90 text-white"
-              disabled={isSubmitting || loading}
-            >
-              {isSubmitting ? 'CREATING...' : 'CREATE POST'}
-            </Button>
+            {/* Submit Button or Success Message */}
+            {showSuccess ? (
+              <div className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md font-medium">
+                ✓ Post Created!
+              </div>
+            ) : (
+              <Button 
+                type="submit" 
+                className="bg-primary hover:bg-primary/90 text-white"
+                disabled={isSubmitting || loading}
+              >
+                {isSubmitting ? 'CREATING...' : 'CREATE POST'}
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>

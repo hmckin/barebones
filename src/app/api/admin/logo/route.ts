@@ -10,13 +10,17 @@ export async function POST(request: NextRequest) {
     
     if (!user?.email) {
       return NextResponse.json(
-        { error: 'Unauthorized - Please sign in to upload images' },
+        { error: 'Unauthorized - Please sign in to upload logo' },
         { status: 401 }
       )
     }
     
+    // Check if user is admin (you can implement your own admin check logic)
+    // For now, we'll allow any authenticated user to upload logo
+    
     const formData = await request.formData()
     const file = formData.get('file') as File
+    const redirectUrl = formData.get('redirectUrl') as string
     
     if (!file) {
       return NextResponse.json(
@@ -40,27 +44,33 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Generate unique filename with user ID to avoid conflicts
+    // Generate unique filename for logo
     const timestamp = Date.now()
-    const userId = user.id
-    const filename = `${userId}/${timestamp}-${file.name}`
+    const filename = `logos/${timestamp}-${file.name}`
     
-    // Upload to Supabase Storage using the authenticated server client
+    console.log('Attempting to upload logo to:', filename)
+    console.log('File size:', file.size, 'File type:', file.type)
+    
+    // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(filename, file)
     
     if (error) {
       console.error('Supabase upload error:', error)
+      console.error('Error details:', {
+        message: error.message
+      })
       
-      // Provide more specific error messages
-      let errorMessage = 'Failed to upload file to storage'
+      let errorMessage = 'Failed to upload logo to storage'
       if (error.message.includes('policy')) {
         errorMessage = 'Storage policy violation. Please check your Supabase storage policies.'
       } else if (error.message.includes('bucket')) {
         errorMessage = 'Storage bucket access denied. Please check your Supabase configuration.'
       } else if (error.message.includes('not found')) {
         errorMessage = 'Storage bucket not found. Please create the "images" bucket in your Supabase dashboard.'
+      } else if (error.message.includes('row level')) {
+        errorMessage = 'Row level security policy violation. Please check your Supabase storage policies.'
       }
       
       return NextResponse.json(
@@ -77,17 +87,20 @@ export async function POST(request: NextRequest) {
       .from(STORAGE_BUCKET)
       .getPublicUrl(filename)
     
+    // Return logo data
     return NextResponse.json({
       success: true,
-      imageUrl: publicUrl, // Return the full public URL instead of just filename
+      logo: {
+        url: publicUrl,
+        redirectUrl: redirectUrl || undefined
+      },
       filename,
       size: file.size,
-      type: file.type,
-      publicUrl
+      type: file.type
     })
     
   } catch (error) {
-    console.error('Upload error:', error)
+    console.error('Logo upload error:', error)
     return NextResponse.json(
       { 
         error: 'Internal server error',

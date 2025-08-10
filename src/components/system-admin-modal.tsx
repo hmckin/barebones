@@ -42,6 +42,7 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
   const [activeTab, setActiveTab] = useState('general')
   const [newAdminEmail, setNewAdminEmail] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isLogoUploading, setIsLogoUploading] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [hiddenRequests, setHiddenRequests] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
@@ -76,7 +77,20 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
       // TODO: Replace with actual API calls
       switch (tab) {
         case 'general':
-          // PATCH /api/admin/settings/colors, PATCH /api/admin/settings/logo
+          // Save theme colors and logo settings
+          if (logo) {
+            // Logo is already saved when uploaded, just update any redirect URL changes
+            console.log('Logo settings saved:', logo)
+            
+            // Update logo with current redirect URL if it changed
+            if (logo.redirectUrl !== logoRedirectUrl) {
+              updateLogo({
+                ...logo,
+                redirectUrl: logoRedirectUrl || undefined
+              })
+            }
+          }
+          console.log('Theme colors saved:', themeColors)
           break
         case 'profile':
           // PATCH /api/admin/profile
@@ -120,7 +134,7 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
     })
   }
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -136,19 +150,54 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
       return
     }
 
-    // Create object URL for preview
-    const url = URL.createObjectURL(file)
+    setIsLogoUploading(true)
+    setSaveMessage(null)
     
-    const newLogo = {
-      url: url,
-      redirectUrl: logoRedirectUrl || undefined
-    }
+    try {
+      // Create FormData for upload
+      const formData = new FormData()
+      formData.append('file', file)
+      if (logoRedirectUrl) {
+        formData.append('redirectUrl', logoRedirectUrl)
+      }
 
-    updateLogo(newLogo)
-    
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+      // Upload to Supabase storage via our API
+      const response = await fetch('/api/admin/logo', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorMessage = errorData.error || 'Failed to upload logo'
+        console.error('Upload failed:', errorMessage)
+        throw errorMessage
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Update logo with the permanent URL from storage
+        updateLogo(result.logo)
+        
+        // Show success message
+        setSaveMessage({ type: 'success', message: 'Logo uploaded successfully!' })
+        
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+      } else {
+        throw 'Upload failed'
+      }
+    } catch (error) {
+      console.error('Logo upload error:', error)
+      setSaveMessage({ 
+        type: 'error', 
+        message: typeof error === 'string' ? error : 'Failed to upload logo. Please try again.' 
+      })
+    } finally {
+      setIsLogoUploading(false)
     }
   }
 
@@ -160,6 +209,12 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
         redirectUrl: url || undefined
       })
     }
+  }
+  
+  const handleRemoveLogo = () => {
+    updateLogo({ url: '', redirectUrl: undefined })
+    setLogoRedirectUrl('')
+    setSaveMessage({ type: 'success', message: 'Logo removed successfully!' })
   }
 
   if (!isOpen) return null
@@ -274,14 +329,36 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                               onChange={handleLogoUpload}
                               className="hidden"
                             />
-                            <Button 
-                              variant="outline" 
-                              onClick={() => fileInputRef.current?.click()}
-                              className="flex items-center space-x-2"
-                            >
-                              <Upload className="w-4 h-4" />
-                              <span>Upload Logo</span>
-                            </Button>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="outline" 
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isLogoUploading}
+                                className="flex items-center space-x-2"
+                              >
+                                {isLogoUploading ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                                    <span>Uploading...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="w-4 h-4" />
+                                    <span>Upload Logo</span>
+                                  </>
+                                )}
+                              </Button>
+                              
+                              {logo?.url && (
+                                <Button 
+                                  variant="outline" 
+                                  onClick={handleRemoveLogo}
+                                  className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                                >
+                                  Remove Logo
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -297,6 +374,8 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                           onChange={(e) => handleLogoRedirectUrlChange(e.target.value)}
                         />
                       </div>
+                      
+
                     </div>
                   </div>
                 </TabsContent>

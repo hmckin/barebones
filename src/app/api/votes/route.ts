@@ -27,16 +27,20 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Get user ID
-    const dbUser = await prisma.user.findUnique({
+    // Get or create user in database
+    let dbUser = await prisma.user.findUnique({
       where: { email: user.email }
     })
     
     if (!dbUser) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
+      // Create user if they don't exist in the database
+      dbUser = await prisma.user.create({
+        data: {
+          email: user.email,
+          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          role: 'user'
+        }
+      })
     }
     
     // Check if user has already voted

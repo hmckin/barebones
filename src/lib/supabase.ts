@@ -8,8 +8,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-// Client-side Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Client-side Supabase client (using SSR-compatible client)
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
 // Client component Supabase client (with auth)
 export const createClientSupabase = () => createBrowserClient(supabaseUrl, supabaseAnonKey)

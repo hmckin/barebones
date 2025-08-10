@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       id: comment.id,
       content: comment.content,
       author: comment.author.name || comment.author.email || 'Anonymous',
-      createdAt: comment.createdAt
+      createdAt: new Date(comment.createdAt)
     }))
     
     return NextResponse.json(transformedComments)
@@ -74,16 +74,20 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Get user ID
-    const dbUser = await prisma.user.findUnique({
+    // Get or create user in database
+    let dbUser = await prisma.user.findUnique({
       where: { email: user.email }
     })
     
     if (!dbUser) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
+      // Create user if they don't exist in the database
+      dbUser = await prisma.user.create({
+        data: {
+          email: user.email,
+          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          role: 'user'
+        }
+      })
     }
     
     // Verify ticket exists
@@ -122,7 +126,7 @@ export async function POST(request: NextRequest) {
       id: comment.id,
       content: comment.content,
       author: comment.author.name || comment.author.email || 'Anonymous',
-      createdAt: comment.createdAt
+      createdAt: new Date(comment.createdAt)
     }
     
     return NextResponse.json(transformedComment, { status: 201 })

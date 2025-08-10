@@ -19,8 +19,12 @@ export const createServerSupabase = async (request?: NextRequest) => {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          // In API routes, we don't need to set cookies back
-          // This is just for the auth check
+          // In API routes, we need to handle cookie setting properly
+          // This is called during auth operations
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // For API routes, we can't set cookies back to the response
+            // The auth check should work with existing cookies
+          })
         },
       },
     })

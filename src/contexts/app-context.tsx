@@ -115,17 +115,14 @@ const defaultUserUpvotes: UserUpvotes = {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [suggestions, setSuggestions] = useState<Suggestion[]>(initialSuggestions)
   const [themeColors, setThemeColors] = useState<ThemeColors>(defaultThemeColors)
   const [userUpvotes, setUserUpvotes] = useState<UserUpvotes>(defaultUserUpvotes)
   const [selectedPost, setSelectedPost] = useState<Suggestion | null>(null)
   const [previousTab, setPreviousTab] = useState<string>('posts')
   const [isSystemAdmin] = useState<boolean>(true) // Temporary FE flag, later replaced with BE role check
   const [loading, setLoading] = useState<boolean>(false)
-  const [logo, setLogo] = useState<Logo | null>({
-    url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiB2aWV3Qm94PSIwIDAgMjI1IDc1IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiBmaWxsPSIjMDAwIi8+Cjwvc3ZnPgo=',
-    redirectUrl: undefined
-  })
+  const [logo, setLogo] = useState<Logo | null>(null)
 
   // Load theme colors and user upvotes from localStorage on mount
   useEffect(() => {
@@ -152,7 +149,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const savedLogo = localStorage.getItem('logo')
       if (savedLogo) {
         try {
-          setLogo(JSON.parse(savedLogo))
+          const parsedLogo = JSON.parse(savedLogo)
+          // Check if the saved logo is the old black box SVG and replace it with null
+          if (parsedLogo?.url === 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiB2aWV3Qm94PSIwIDAgMjI1IDc1IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiBmaWxsPSIjMDAwIi8+Cjwvc3ZnPgo=') {
+            // Clear the old logo from localStorage and set to null
+            localStorage.removeItem('logo')
+            setLogo(null)
+          } else {
+            setLogo(parsedLogo)
+          }
         } catch (error) {
           console.error('Failed to parse saved logo:', error)
         }
@@ -170,16 +175,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Upload images first if any
       let imageUrl: string | undefined
       if (images && images.length > 0) {
-        // For now, we'll use the first image as the main image
-        // In a real app, you might want to handle multiple images differently
-        const imageFile = await fetch(images[0].url).then(r => r.blob())
-        const file = new File([imageFile], images[0].name, { type: images[0].type })
+        // Get the original file from the ImageAttachment
+        // We need to store the actual File object, not just the URL
+        const imageAttachment = images[0]
         
-        const uploadResult = await uploadsApi.uploadImage(file)
-        if (uploadResult.error) {
-          throw new Error(uploadResult.error)
+        // If we have the original file, use it directly
+        if (imageAttachment.file) {
+          const uploadResult = await uploadsApi.uploadImage(imageAttachment.file)
+          if (uploadResult.error) {
+            throw new Error(uploadResult.error)
+          }
+          imageUrl = uploadResult.data?.imageUrl
+        } else {
+          // Fallback: try to convert from blob URL (less reliable)
+          try {
+            const imageFile = await fetch(imageAttachment.url).then(r => r.blob())
+            const file = new File([imageFile], imageAttachment.name, { type: imageAttachment.type })
+            
+            const uploadResult = await uploadsApi.uploadImage(file)
+            if (uploadResult.error) {
+              throw new Error(uploadResult.error)
+            }
+            imageUrl = uploadResult.data?.imageUrl
+          } catch (uploadError) {
+            console.error('Failed to upload image:', uploadError)
+            throw new Error('Failed to upload image. Please try again.')
+          }
         }
-        imageUrl = uploadResult.data?.imageUrl
       }
       
       // Create ticket via API
@@ -200,6 +222,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Failed to create suggestion:', error)
       // You might want to show a toast notification here
+      throw error // Re-throw to let the component handle it
     }
   }
 
@@ -215,11 +238,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (result.data) {
+        // Ensure the comment has the author field set and proper date
+        const commentWithAuthor = {
+          ...result.data,
+          author: result.data.author || author || 'Anonymous',
+          createdAt: result.data.createdAt instanceof Date ? result.data.createdAt : new Date(result.data.createdAt)
+        }
+        
         // Add to local state
         setSuggestions(prev =>
           prev.map(suggestion =>
             suggestion.id === suggestionId
-              ? { ...suggestion, comments: [...suggestion.comments, result.data!] }
+              ? { ...suggestion, comments: [...suggestion.comments, commentWithAuthor] }
               : suggestion
           )
         )
@@ -340,7 +370,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const selectPost = (post: Suggestion | null, fromTab?: string) => {
-    setSelectedPost(post)
+    if (post) {
+      // Find the full suggestion data from the suggestions array to ensure we have complete comment data
+      let fullPost = suggestions.find(s => s.id === post.id) || post
+      
+      // Ensure the post has complete comment data
+      if (fullPost.comments && Array.isArray(fullPost.comments)) {
+        fullPost = {
+          ...fullPost,
+          comments: fullPost.comments.map(comment => ({
+            ...comment,
+            author: comment.author || 'Anonymous',
+            createdAt: comment.createdAt instanceof Date ? comment.createdAt : new Date(comment.createdAt)
+          }))
+        }
+      }
+      
+      setSelectedPost(fullPost)
+    } else {
+      setSelectedPost(null)
+    }
     if (fromTab) {
       setPreviousTab(fromTab)
     }
@@ -355,16 +404,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw new Error(result.error)
       }
       
-      if (result.data) {
-        setSuggestions(result.data.tickets)
+      if (result.data && result.data.tickets && result.data.tickets.length > 0) {
+        // Ensure all comments have proper author fields and dates
+        const ticketsWithValidComments = result.data.tickets.map(ticket => ({
+          ...ticket,
+          comments: ticket.comments.map(comment => ({
+            ...comment,
+            author: comment.author || 'Anonymous',
+            createdAt: comment.createdAt instanceof Date ? comment.createdAt : new Date(comment.createdAt)
+          }))
+        }))
+        
+        setSuggestions(ticketsWithValidComments)
         
         // Sync user upvotes with backend
-        await syncUserUpvotes(result.data.tickets)
+        await syncUserUpvotes(ticketsWithValidComments)
+      } else {
+        // If no tickets returned, keep the initial suggestions
+        console.log('No tickets returned from API, keeping initial suggestions')
       }
     } catch (error) {
       console.error('Failed to load tickets:', error)
-      // Fallback to initial suggestions if API fails
-      setSuggestions(initialSuggestions)
+      // Keep the initial suggestions if API fails
+      console.log('API failed, keeping initial suggestions')
     } finally {
       setLoading(false)
     }
