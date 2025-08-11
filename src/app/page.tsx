@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { AuthButton } from '@/components/auth-button'
 import { CreatePost } from '@/components/create-post'
 import { RequestsView, RequestsHeader } from '@/components/requests-view'
 import { ExpandedPost } from '@/components/expanded-post'
@@ -54,7 +53,7 @@ export default function Home() {
     <div className={`min-h-screen bg-background ${selectedPost ? 'h-screen overflow-hidden' : ''}`}>
       {/* Header */}
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-        <div className="w-full px-4">
+        <div className="w-full pl-4 pr-10">
           <div className="flex items-start justify-between">
             {/* Left side - Logo and Tabs */}
             <div className="flex items-start space-x-4">
@@ -100,9 +99,8 @@ export default function Home() {
               </div>
             </div>
             
-            {/* Right side - Auth and Theme Controls */}
-            <div className="pt-8 flex items-center space-x-4">
-              <AuthButton />
+            {/* Right side - Combined Auth and Theme Controls */}
+            <div className="pt-6 flex items-center">
               <ThemeToggle />
             </div>
           </div>

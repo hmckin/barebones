@@ -8,8 +8,10 @@ import { ChevronUp, MessageSquare, ArrowLeft, Send, Image as ImageIcon, X, Chevr
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/contexts/app-context'
+import { useAuth } from '@/hooks/use-auth'
 import { Suggestion } from '@/types'
 import { getStatusColor } from '@/lib/utils'
+import { userProfileApi } from '@/lib/api'
 
 const ProgressBadge = ({ status, isSystemAdmin, onStatusChange }: { 
   status: string
@@ -91,8 +93,31 @@ interface ExpandedPostProps {
 }
 
 export function ExpandedPost({ post }: ExpandedPostProps) {
-  const { hasUserUpvoted, upvoteSuggestion, selectPost, suggestions, addComment, updateSuggestionStatus, isSystemAdmin, previousTab } = useApp()
+  const { hasUserUpvoted, upvoteSuggestion, selectPost, suggestions, addComment, updateSuggestionStatus, checkIsSystemAdmin, previousTab } = useApp()
+  const { user } = useAuth()
   const currentPost = suggestions.find(s => s.id === post.id) || post
+  const [userDisplayName, setUserDisplayName] = useState<string | null>(null)
+  
+  // Check if current user is a system administrator
+  const currentUserIsSystemAdmin = user?.email ? checkIsSystemAdmin(user.email) : false
+
+  // Load user's display name on mount
+  useEffect(() => {
+    const loadUserDisplayName = async () => {
+      if (user?.email) {
+        try {
+          const result = await userProfileApi.getDisplayName()
+          if (result.data && !result.error) {
+            setUserDisplayName(result.data.displayName)
+          }
+        } catch (error) {
+          console.error('Error loading user display name:', error)
+        }
+      }
+    }
+
+    loadUserDisplayName()
+  }, [user?.email])
   
   // Safety check to ensure the post exists and has required fields
   if (!currentPost) {
@@ -129,7 +154,9 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault()
     if (commentContent.trim()) {
-      addComment(currentPost.id, commentContent.trim(), 'Anonymous')
+      // Use user's display name if available, otherwise fall back to email or 'Anonymous'
+      const authorName = userDisplayName || user?.name || user?.email || 'Anonymous'
+      addComment(currentPost.id, commentContent.trim(), authorName)
       setCommentContent('')
     }
   }
@@ -151,8 +178,13 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
     }
   }
 
-  const handleStatusChange = (newStatus: Suggestion['status']) => {
-    updateSuggestionStatus(currentPost.id, newStatus)
+  const handleStatusChange = async (newStatus: Suggestion['status']) => {
+    try {
+      await updateSuggestionStatus(currentPost.id, newStatus)
+    } catch (error) {
+      console.error('Failed to update status:', error)
+      // The error is already handled in the context, but we can add additional UI feedback here if needed
+    }
   }
 
   const hasImages = currentPost.images && currentPost.images.length > 0
@@ -178,7 +210,7 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
 
       {/* Main Content */}
       <motion.div
-        className="max-w-4xl mx-auto space-y-6 h-full overflow-hidden"
+        className="max-w-4xl mx-auto flex flex-col h-full overflow-hidden pb-24"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.2 }}
@@ -218,7 +250,7 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
                 <div className="mb-2">
                   <ProgressBadge 
                     status={currentPost.status} 
-                    isSystemAdmin={isSystemAdmin}
+                    isSystemAdmin={currentUserIsSystemAdmin}
                     onStatusChange={handleStatusChange}
                   />
                 </div>
@@ -261,12 +293,13 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
         </Card>
 
         {/* Comments Section */}
-        <div className="mt-5 flex flex-col h-[calc(100vh-500px)]">
+        <div className="mt-6 flex flex-col flex-1 min-h-0">
           
           {/* Comments List */}
-          <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+          <div className="flex-1 overflow-y-auto space-y-2 pl-10 pr-2">
             {currentPost.comments.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400 dark:border-gray-700">
+                <p>No comments.</p>
               </div>
             ) : (
               currentPost.comments.map((comment) => (
@@ -295,16 +328,16 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
           </div>
         </div>
 
-        {/* Add Comment Form - Pinned to viewport bottom */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 z-10">
-          <div className="max-w-4xl mx-auto px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        {/* Add Comment Form - Pinned to bottom of container */}
+        <div className="flex-shrink-0 bg-transparent border-t border-gray-200 dark:border-gray-700">
+          <div className="px-6 pb-10 pt-2">
             <form onSubmit={handleAddComment} className="flex items-center space-x-3">
               <Input
                 type="text"
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
                 placeholder="Add a comment..."
-                className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                className="flex-1 border-none shadow-none rounded-lg bg-transparent dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 required
               />
               <Button 

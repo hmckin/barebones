@@ -115,7 +115,8 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
         title: title.trim(),
         description: description.trim(),
         upvotes: 0,
-        status: 'Queued'
+        status: 'Queued',
+        hidden: false
       }, attachedImages)
 
       // Reset form

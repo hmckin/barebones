@@ -11,7 +11,8 @@ export function useAuth() {
       name: user.user_metadata?.full_name || user.email,
       email: user.email,
       image: user.user_metadata?.avatar_url,
-      role: user.user_metadata?.role || 'USER'
+      role: user.user_metadata?.role || 'USER',
+      displayName: user.user_metadata?.displayName || null
     } : null,
     isAuthenticated,
     isLoading,

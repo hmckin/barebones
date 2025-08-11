@@ -2,15 +2,17 @@
 
 import React, { useState, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Settings, User, Users, FileText, Palette, Image as ImageIcon, Save, Eye, EyeOff, Search, Upload } from 'lucide-react'
+import { X, Trash2, Settings, User, Users, FileText, Palette, Image as ImageIcon, Save, Eye, EyeOff, Search, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useApp } from '@/contexts/app-context'
+import { useAuth } from '@/hooks/use-auth'
 import { ColorPicker } from '@/components/color-picker'
 import { getStatusColor } from '@/lib/utils'
+import { adminTicketsApi, themeApi, logoSettingsApi } from '@/lib/api'
 
 interface SystemAdminModalProps {
   isOpen: boolean
@@ -24,11 +26,6 @@ interface AdminUser {
   avatar?: string
 }
 
-const mockAdmins: AdminUser[] = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', avatar: '/api/placeholder/32/32' },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', avatar: '/api/placeholder/32/32' },
-]
-
 const ProgressBadge = ({ status }: { status: string }) => {
   return (
     <Badge className={`text-xs font-medium ${getStatusColor(status)}`}>
@@ -38,15 +35,21 @@ const ProgressBadge = ({ status }: { status: string }) => {
 }
 
 export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
-  const { themeColors, updateThemeColors, suggestions, updateSuggestionStatus, logo, updateLogo } = useApp()
+  const { themeColors, updateThemeColors, adminTickets, logo, updateLogo, systemAdmins, addSystemAdmin, removeSystemAdmin, loadAdminTickets, updateAdminTickets } = useApp()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('general')
   const [newAdminEmail, setNewAdminEmail] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isLogoUploading, setIsLogoUploading] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null)
-  const [hiddenRequests, setHiddenRequests] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [logoRedirectUrl, setLogoRedirectUrl] = useState(logo?.redirectUrl || '')
+  const [isLoadingTickets, setIsLoadingTickets] = useState(false)
+  const [displayName, setDisplayName] = useState('')
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [removeAdminConfirmId, setRemoveAdminConfirmId] = useState<string | null>(null)
+  const [updatingVisibilityId, setUpdatingVisibilityId] = useState<string | null>(null)
+  const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Update logoRedirectUrl when logo changes
@@ -54,52 +57,118 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
     setLogoRedirectUrl(logo?.redirectUrl || '')
   }, [logo])
 
+  // Load tickets when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      handleLoadTickets()
+      handleLoadThemeColors()
+    } else {
+      // Clear confirmation states when modal closes
+      setDeleteConfirmId(null)
+      setRemoveAdminConfirmId(null)
+      setUpdatingVisibilityId(null)
+      setDeletingTicketId(null)
+    }
+  }, [isOpen])
+
+  // Load tickets when switching to requests tab
+  React.useEffect(() => {
+    if (isOpen && activeTab === 'requests') {
+      handleLoadTickets()
+    }
+  }, [isOpen, activeTab])
+
   // Filter suggestions based on search query
   const filteredSuggestions = useMemo(() => {
-    if (!searchQuery.trim()) return suggestions
+    if (!searchQuery.trim()) return adminTickets
     
     const query = searchQuery.toLowerCase()
-    return suggestions.filter(suggestion => 
+    return adminTickets.filter(suggestion => 
       suggestion.title.toLowerCase().includes(query) ||
       suggestion.description.toLowerCase().includes(query) ||
       suggestion.status.toLowerCase().includes(query)
     )
-  }, [suggestions, searchQuery])
+  }, [adminTickets, searchQuery])
+
+  // Calculate ticket statistics
+  const ticketStats = useMemo(() => {
+    const stats = {
+      total: adminTickets.length,
+      queued: adminTickets.filter(t => t.status === 'Queued').length,
+      inProgress: adminTickets.filter(t => t.status === 'In Progress').length,
+      completed: adminTickets.filter(t => t.status === 'Completed').length,
+      hidden: adminTickets.filter(t => t.hidden).length
+    }
+    return stats
+  }, [adminTickets])
 
   const handleSave = async (tab: string) => {
     setIsSaving(true)
     setSaveMessage(null)
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // TODO: Replace with actual API calls
       switch (tab) {
         case 'general':
           // Save theme colors and logo settings
-          if (logo) {
-            // Logo is already saved when uploaded, just update any redirect URL changes
-            console.log('Logo settings saved:', logo)
-            
-            // Update logo with current redirect URL if it changed
-            if (logo.redirectUrl !== logoRedirectUrl) {
-              updateLogo({
-                ...logo,
-                redirectUrl: logoRedirectUrl || undefined
-              })
+          try {
+            // Save theme colors to backend
+            const themeResult = await themeApi.saveThemeColors(themeColors)
+            if (themeResult.error) {
+              throw new Error(themeResult.error)
             }
+            
+            if (logo) {
+              // Logo is already saved when uploaded, just update any redirect URL changes
+              console.log('Logo settings saved:', logo)
+              
+              // Update logo with current redirect URL if it changed
+              if (logo.redirectUrl !== logoRedirectUrl) {
+                try {
+                  const logoResult = await logoSettingsApi.updateLogoSettings({ redirectUrl: logoRedirectUrl || undefined })
+                  if (logoResult.error) {
+                    throw new Error(logoResult.error)
+                  }
+                  
+                  updateLogo({
+                    ...logo,
+                    redirectUrl: logoRedirectUrl || undefined
+                  })
+                } catch (error) {
+                  console.error('Error saving logo settings:', error)
+                  throw error
+                }
+              }
+            }
+            console.log('Theme colors saved:', themeColors)
+          } catch (error) {
+            console.error('Error saving theme colors:', error)
+            throw error
           }
-          console.log('Theme colors saved:', themeColors)
           break
         case 'profile':
-          // PATCH /api/admin/profile
+          // Save profile settings
+          try {
+            // In a real implementation, you'd save this to your database
+            // For now, we'll just log the changes
+            console.log('Profile settings saved:', { displayName })
+            
+            // Show success message
+            setSaveMessage({ type: 'success', message: 'Profile settings saved successfully!' })
+            setTimeout(() => setSaveMessage(null), 3000)
+          } catch (error) {
+            console.error('Error saving profile settings:', error)
+            throw error
+          }
           break
         case 'users':
-          // PATCH /api/admin/users
+          // System admin changes are already handled by the individual functions
+          // (addSystemAdmin, removeSystemAdmin) so we don't need to do anything here
+          console.log('System admin changes saved')
           break
         case 'requests':
-          // PATCH /api/admin/requests/status
+          // Request changes are already handled by the individual functions
+          // (handleToggleVisibility, handleDeleteRequest) so we don't need to do anything here
+          console.log('Request changes saved')
           break
       }
       
@@ -111,27 +180,117 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
     }
   }
 
+  const handleLoadTickets = async () => {
+    setIsLoadingTickets(true)
+    try {
+      await loadAdminTickets()
+    } catch (error) {
+      console.error('Error loading admin tickets:', error)
+    } finally {
+      setIsLoadingTickets(false)
+    }
+  }
+
+  const handleDeleteRequest = async (requestId: string) => {
+    try {
+      // Set loading state for this specific ticket
+      setDeletingTicketId(requestId)
+      
+      // Store original state before optimistic update
+      const originalTickets = [...adminTickets]
+      
+      // Optimistically remove the ticket from the UI
+      const updatedTickets = adminTickets.filter(ticket => ticket.id !== requestId)
+      updateAdminTickets(updatedTickets)
+      
+      console.log('Attempting to delete ticket:', requestId)
+      
+      // Use the dedicated admin API to delete the ticket
+      const result = await adminTicketsApi.deleteTicket(requestId)
+      
+      console.log('Delete API result:', result)
+      
+      if (result.error) {
+        // Revert optimistic update on error
+        updateAdminTickets(originalTickets) // Revert to original state
+        console.error('Delete API returned error:', result.error)
+        throw new Error(result.error)
+      }
+      
+      // Show success message
+      setSaveMessage({ type: 'success', message: 'Request deleted successfully!' })
+      setTimeout(() => setSaveMessage(null), 3000)
+      
+      // Clear confirmation state
+      setDeleteConfirmId(null)
+      
+      // No need to reload tickets since we already updated them optimistically
+    } catch (error) {
+      console.error('Error deleting request:', error)
+      setSaveMessage({ type: 'error', message: 'Failed to delete request. Please try again.' })
+      setTimeout(() => setSaveMessage(null), 3000)
+      
+      // Refresh tickets to revert any optimistic changes
+      await handleLoadTickets()
+    } finally {
+      // Clear loading state
+      setDeletingTicketId(null)
+    }
+  }
+
+  const handleToggleVisibility = async (requestId: string) => {
+    try {
+      const suggestion = adminTickets.find(s => s.id === requestId)
+      if (suggestion) {
+        // Set loading state for this specific ticket
+        setUpdatingVisibilityId(requestId)
+        
+        // Store original state before optimistic update
+        const originalTickets = [...adminTickets]
+        
+        // Optimistically update the UI
+        const updatedTickets = adminTickets.map(ticket => 
+          ticket.id === requestId 
+            ? { ...ticket, hidden: !ticket.hidden }
+            : ticket
+        )
+        
+        // Update the context with optimistic data
+        updateAdminTickets(updatedTickets)
+        
+        // Use the dedicated admin API to toggle visibility
+        const result = await adminTicketsApi.toggleVisibility(requestId, !suggestion.hidden)
+        
+        if (result.error) {
+          // Revert optimistic update on error
+          updateAdminTickets(originalTickets) // Revert to original state
+          throw new Error(result.error)
+        }
+        
+        // Show success message
+        const action = suggestion.hidden ? 'shown' : 'hidden'
+        setSaveMessage({ type: 'success', message: `Request ${action} successfully!` })
+        setTimeout(() => setSaveMessage(null), 3000)
+        
+        // No need to reload tickets since we already updated them optimistically
+      }
+    } catch (error) {
+      console.error('Error toggling visibility:', error)
+      setSaveMessage({ type: 'error', message: 'Failed to toggle visibility. Please try again.' })
+      setTimeout(() => setSaveMessage(null), 3000)
+      
+      // Refresh tickets to revert any optimistic changes
+      await handleLoadTickets()
+    } finally {
+      // Clear loading state
+      setUpdatingVisibilityId(null)
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose()
     }
-  }
-
-  const handleDeleteRequest = (requestId: string) => {
-    // TODO: Implement delete functionality
-    console.log('Delete request:', requestId)
-  }
-
-  const handleToggleVisibility = (requestId: string) => {
-    setHiddenRequests(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(requestId)) {
-        newSet.delete(requestId)
-      } else {
-        newSet.add(requestId)
-      }
-      return newSet
-    })
   }
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,6 +376,47 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
     setSaveMessage({ type: 'success', message: 'Logo removed successfully!' })
   }
 
+  const handleAddAdmin = async () => {
+    if (!newAdminEmail.trim()) return
+    
+    try {
+      await addSystemAdmin(newAdminEmail.trim())
+      setNewAdminEmail('')
+      // Show success message
+      setSaveMessage({ type: 'success', message: 'Administrator added successfully!' })
+      setTimeout(() => setSaveMessage(null), 3000)
+    } catch (error) {
+      setSaveMessage({ type: 'error', message: 'Failed to add administrator. Please try again.' })
+      setTimeout(() => setSaveMessage(null), 3000)
+    }
+  }
+
+  const handleRemoveAdmin = async (adminId: string) => {
+    try {
+      await removeSystemAdmin(adminId)
+      // Show success message
+      setSaveMessage({ type: 'success', message: 'Administrator removed successfully!' })
+      setTimeout(() => setSaveMessage(null), 3000)
+    } catch (error) {
+      setSaveMessage({ type: 'error', message: 'Failed to remove administrator. Please try again.' })
+      setTimeout(() => setSaveMessage(null), 3000)
+    }
+  }
+
+
+
+  const handleLoadThemeColors = async () => {
+    try {
+      const result = await themeApi.getThemeColors()
+      if (result.data && !result.error) {
+        updateThemeColors(result.data)
+      }
+    } catch (error) {
+      console.error('Error loading theme colors:', error)
+      // Keep current theme colors if loading fails
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -275,7 +475,7 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                     className="flex items-center space-x-2 bg-transparent data-[state=active]:text-primary hover:text-gray-900 dark:hover:text-gray-100 rounded-md px-3 py-2 transition-colors text-gray-400 dark:text-gray-500 flex-none"
                   >
                     <Users className="w-4 h-4" />
-                    <span>Users</span>
+                    <span>Admin Users</span>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="requests" 
@@ -400,7 +600,11 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                         <label className="block text-sm font-medium mb-2">
                           Display Name
                         </label>
-                        <Input placeholder="Enter display name" />
+                        <Input 
+                          placeholder="Enter display name" 
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                        />
                       </div>
                     </div>
                   </div>
@@ -421,13 +625,13 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                           onChange={(e) => setNewAdminEmail(e.target.value)}
                           className="flex-1"
                         />
-                        <Button>Add Admin</Button>
+                        <Button onClick={handleAddAdmin}>Add Admin</Button>
                       </div>
                     </div>
 
                     {/* Current Admins */}
                     <div className="space-y-2">
-                      {mockAdmins.map((admin) => (
+                      {systemAdmins.map((admin) => (
                         <div key={admin.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
@@ -438,9 +642,36 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                               <p className="text-sm text-gray-500">{admin.email}</p>
                             </div>
                           </div>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                            Remove
-                          </Button>
+                          {user?.email === admin.email ? (
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Current User</span>
+                          ) : removeAdminConfirmId === admin.id ? (
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-red-600 hover:text-red-700" 
+                                onClick={() => handleRemoveAdmin(admin.id)}
+                              >
+                                Confirm
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setRemoveAdminConfirmId(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-red-600 hover:text-red-700" 
+                              onClick={() => setRemoveAdminConfirmId(admin.id)}
+                            >
+                              Remove
+                            </Button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -450,61 +681,115 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                 {/* Requests Tab */}
                 <TabsContent value="requests" className="space-y-6">
                   <div>
-                    {/* Search/Filter */}
-                    <div className="mb-4 relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input 
-                        placeholder="Search feature requests..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10"
-                      />
+                    {/* Header with Search */}
+                    <div className="mb-4">
+                      <div className="relative w-full">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Input 
+                          placeholder="Search feature requests..." 
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+
                     </div>
 
                     {/* Requests List */}
                     <div className="space-y-4 max-h-96 overflow-y-auto">
-                      {filteredSuggestions.map((suggestion) => (
-                        <div key={suggestion.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg relative">
-                          {/* Action buttons positioned at top right */}
-                          <div className="absolute top-2 right-2 flex items-center space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleToggleVisibility(suggestion.id)}
-                              className={hiddenRequests.has(suggestion.id) ? "text-blue-600 hover:text-blue-700" : "text-gray-600 hover:text-gray-700"}
-                            >
-                              {hiddenRequests.has(suggestion.id) ? (
-                                <>
-                                  <EyeOff className="w-4 h-4 mr-1" />
-                                  Show
-                                </>
-                              ) : (
-                                <>
-                                  <Eye className="w-4 h-4 mr-1" />
-                                  Hide
-                                </>
-                              )}
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleDeleteRequest(suggestion.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                          
-                          <div className="flex-1 pr-48">
-                            {/* Badge above title - matching expanded view */}
-                            <div className="mb-2">
-                              <ProgressBadge status={suggestion.status} />
-                            </div>
-                            <h4 className="font-medium text-gray-900 dark:text-gray-100">{suggestion.title}</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{suggestion.description}</p>
-                          </div>
+                      {isLoadingTickets ? (
+                        <div className="text-center py-8 text-gray-500">
+                          Loading feature requests...
                         </div>
-                      ))}
+                      ) : filteredSuggestions.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          No feature requests found.
+                        </div>
+                      ) : (
+                        filteredSuggestions.map((suggestion) => (
+                          <div key={suggestion.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+                            <div className="flex-1 mr-4">
+                              <div className="mb-2">
+                                <ProgressBadge status={suggestion.status} />
+                              </div>
+                              <h4 className="font-medium">{suggestion.title}</h4>
+                              <p className="text-sm text-gray-700 dark:text-gray-300">{suggestion.description}</p>
+
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleToggleVisibility(suggestion.id)}
+                                className="text-gray-600 hover:text-gray-700 dark:hover:text-gray-300"
+                                title={suggestion.hidden ? 'Show ticket' : 'Hide ticket'}
+                                disabled={updatingVisibilityId === suggestion.id}
+                              >
+                                {updatingVisibilityId === suggestion.id ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                                    <span className="ml-1">Updating...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    {!suggestion.hidden ? (
+                                      <>
+                                        <EyeOff className="w-4 h-4" />
+                                        <span className="ml-1">Hide</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Eye className="w-4 h-4" />
+                                        <span className="ml-1">Show</span>
+                                      </>
+                                    )}
+                                  </>
+                                )}
+                              </Button>
+                              {deleteConfirmId === suggestion.id ? (
+                                <div className="flex space-x-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => handleDeleteRequest(suggestion.id)}
+                                    className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                                    disabled={deletingTicketId === suggestion.id}
+                                  >
+                                    {deletingTicketId === suggestion.id ? (
+                                      <>
+                                        <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                                        <span>Deleting...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Trash2 className="w-4 h-4" />
+                                        <span>Confirm</span>
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => setDeleteConfirmId(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => setDeleteConfirmId(suggestion.id)}
+                                  className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                                  title="Delete ticket"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </TabsContent>

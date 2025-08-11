@@ -21,6 +21,7 @@ export interface Suggestion {
   description: string
   upvotes: number
   status: 'Queued' | 'In Progress' | 'Completed'
+  hidden: boolean
   createdAt: Date
   comments: Comment[]
   images: ImageAttachment[]

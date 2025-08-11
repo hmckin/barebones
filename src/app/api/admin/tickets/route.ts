@@ -6,27 +6,43 @@ const prisma = new PrismaClient()
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createServerSupabase()
+    
+    // Check if user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check if user is a system admin
+    const { data: adminCheck, error: adminError } = await supabase
+      .from('system_admins')
+      .select('*')
+      .eq('email', user.email)
+      .single()
+
+    if (adminError || !adminCheck) {
+      return NextResponse.json({ error: 'Forbidden: System admin access required' }, { status: 403 })
+    }
+
+    // Get query parameters
     const { searchParams } = new URL(request.url)
-    
-    // Pagination
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const offset = (page - 1) * limit
-    
-    // Filtering
+    const limit = parseInt(searchParams.get('limit') || '50') // Higher limit for admin view
     const status = searchParams.get('status')
     const search = searchParams.get('search')
     const authorId = searchParams.get('authorId')
-    
-    // Sorting
+    const hidden = searchParams.get('hidden') // Allow filtering by hidden status
     const sortBy = searchParams.get('sortBy') || 'createdAt'
     const sortOrder = searchParams.get('sortOrder') || 'desc'
-    
+
     // Build where clause
     const where: any = {}
     
-    // Always filter out hidden tickets for regular users
-    where.hidden = false
+    // Don't filter by hidden by default - show all tickets to admins
+    if (hidden !== null && hidden !== undefined) {
+      where.hidden = hidden === 'true'
+    }
     
     if (status) {
       where.status = status
@@ -42,7 +58,7 @@ export async function GET(request: NextRequest) {
     if (authorId) {
       where.authorId = authorId
     }
-    
+
     // Build orderBy clause
     const orderBy: any = {}
     if (sortBy === 'upvotes') {
@@ -59,13 +75,13 @@ export async function GET(request: NextRequest) {
     } else {
       orderBy[sortBy] = sortOrder
     }
-    
+
     // Get tickets with pagination
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
         orderBy,
-        skip: offset,
+        skip: (page - 1) * limit,
         take: limit,
         include: {
           author: {
@@ -105,7 +121,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.ticket.count({ where })
     ])
-    
+
     // Transform data to match frontend expectations
     const transformedTickets = tickets.map((ticket: any) => ({
       id: ticket.id,
@@ -133,122 +149,21 @@ export async function GET(request: NextRequest) {
       }] : [],
       _count: ticket._count
     }))
-    
+
+    const totalPages = Math.ceil(total / limit)
+
     return NextResponse.json({
       tickets: transformedTickets,
       pagination: {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit)
+        totalPages
       }
     })
-    
-  } catch (error) {
-    console.error('Error fetching tickets:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch tickets' },
-      { status: 500 }
-    )
-  }
-}
 
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createServerSupabase(request)
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError) {
-      return NextResponse.json(
-        { error: 'Authentication error', details: authError.message },
-        { status: 401 }
-      )
-    }
-    
-    if (!user?.email) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-    
-    const body = await request.json()
-    const { title, description, imageUrl } = body
-    
-    // Validation
-    if (!title || !title.trim()) {
-      return NextResponse.json(
-        { error: 'Title is required' },
-        { status: 400 }
-      )
-    }
-    
-    // Get or create user in database
-    let dbUser = await prisma.user.findUnique({
-      where: { email: user.email }
-    })
-    
-    if (!dbUser) {
-      // Create user if they don't exist in the database
-      dbUser = await prisma.user.create({
-        data: {
-          email: user.email,
-          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          role: 'user'
-        }
-      })
-    }
-    
-    // Create ticket
-    const ticket = await prisma.ticket.create({
-      data: {
-        title: title.trim(),
-        description: description?.trim() || '',
-        imageUrl,
-        authorId: dbUser.id,
-        status: 'Queued'
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true
-          }
-        }
-      }
-    })
-    
-    // Transform to match frontend expectations
-    const transformedTicket = {
-      id: ticket.id,
-      title: ticket.title,
-      description: ticket.description,
-      status: ticket.status,
-      upvotes: 0,
-      createdAt: ticket.createdAt,
-      updatedAt: ticket.updatedAt,
-      author: ticket.author,
-      comments: [],
-      images: ticket.imageUrl ? [{
-        id: `img-${ticket.id}`,
-        name: 'uploaded-image',
-        url: ticket.imageUrl,
-        size: 0,
-        type: 'image/*',
-        uploadedAt: ticket.createdAt
-      }] : []
-    }
-    
-    return NextResponse.json(transformedTicket, { status: 201 })
-    
   } catch (error) {
-    console.error('Error creating ticket:', error)
-    return NextResponse.json(
-      { error: 'Failed to create ticket' },
-      { status: 500 }
-    )
+    console.error('Error fetching admin tickets:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 

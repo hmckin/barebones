@@ -46,6 +46,7 @@ export interface TicketFilters {
   status?: string
   search?: string
   authorId?: string
+  hidden?: boolean
   sortBy?: 'createdAt' | 'upvotes' | 'trending'
   sortOrder?: 'asc' | 'desc'
 }
@@ -66,8 +67,22 @@ async function apiCall<T>(
     })
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      let errorMessage = `HTTP error! status: ${response.status}`
+      
+      try {
+        const errorData = await response.json()
+        if (errorData.error) {
+          errorMessage = errorData.error
+        }
+      } catch {
+        // If we can't parse the error response, use the status text
+        if (response.statusText) {
+          errorMessage = response.statusText
+        }
+      }
+      
+      // Return error instead of throwing for better error handling
+      return { error: errorMessage }
     }
 
     const data = await response.json()
@@ -112,11 +127,23 @@ export const ticketsApi = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     })
-  }
-}
+  },
 
-// Comments API
-export const commentsApi = {
+  // Toggle ticket visibility (show/hide) - for regular users
+  async toggleVisibility(ticketId: string, hidden: boolean): Promise<ApiResponse<{ success: boolean; data: Suggestion; message: string }>> {
+    return apiCall<{ success: boolean; data: Suggestion; message: string }>('/admin/tickets/visibility', {
+      method: 'PATCH',
+      body: JSON.stringify({ ticketId, hidden }),
+    })
+  },
+
+  // Delete a ticket - for regular users
+  async deleteTicket(ticketId: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    return apiCall<{ success: boolean; message: string }>(`/tickets/${ticketId}`, {
+      method: 'DELETE',
+    })
+  },
+
   // Get comments for a ticket
   async getComments(ticketId: string): Promise<ApiResponse<Comment[]>> {
     return apiCall<Comment[]>(`/comments?ticketId=${ticketId}`)
@@ -131,6 +158,46 @@ export const commentsApi = {
   }
 }
 
+// Admin Tickets API - dedicated endpoints for admin management
+export const adminTicketsApi = {
+  // Get all tickets for admin view (including hidden ones)
+  async getAdminTickets(filters: TicketFilters = {}): Promise<ApiResponse<PaginatedResponse<Suggestion>>> {
+    const params = new URLSearchParams()
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params.append(key, value.toString())
+      }
+    })
+    
+    return apiCall<PaginatedResponse<Suggestion>>(`/admin/tickets?${params.toString()}`)
+  },
+
+  // Toggle ticket visibility (show/hide) - for admins
+  async toggleVisibility(ticketId: string, hidden: boolean): Promise<ApiResponse<{ success: boolean; data: Suggestion; message: string }>> {
+    return apiCall<{ success: boolean; data: Suggestion; message: string }>('/admin/tickets/visibility', {
+      method: 'PATCH',
+      body: JSON.stringify({ ticketId, hidden }),
+    })
+  },
+
+  // Delete a ticket - for admins
+  async deleteTicket(ticketId: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    return apiCall<{ success: boolean; message: string }>('/admin/tickets/delete', {
+      method: 'DELETE',
+      body: JSON.stringify({ ticketId }),
+    })
+  },
+
+  // Update ticket status - for admins
+  async updateTicketStatus(id: string, status: string): Promise<ApiResponse<Suggestion>> {
+    return apiCall<Suggestion>(`/admin/tickets/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    })
+  }
+}
+
 // Votes API
 export const votesApi = {
   // Toggle vote on a ticket
@@ -138,6 +205,33 @@ export const votesApi = {
     return apiCall<{ action: string; upvotes: number }>('/votes', {
       method: 'POST',
       body: JSON.stringify(data),
+    })
+  }
+}
+
+// Theme API
+export const themeApi = {
+  // Save theme colors
+  async saveThemeColors(colors: { primary: string; secondary: string }): Promise<ApiResponse<{ success: boolean; message: string; data: any }>> {
+    return apiCall<{ success: boolean; message: string; data: any }>('/admin/theme', {
+      method: 'POST',
+      body: JSON.stringify(colors),
+    })
+  },
+
+  // Get theme colors
+  async getThemeColors(): Promise<ApiResponse<{ primary: string; secondary: string }>> {
+    return apiCall<{ primary: string; secondary: string }>('/admin/theme')
+  }
+}
+
+// Logo Settings API
+export const logoSettingsApi = {
+  // Update logo settings (like redirect URL)
+  async updateLogoSettings(settings: { redirectUrl?: string }): Promise<ApiResponse<{ success: boolean; message: string; data: any }>> {
+    return apiCall<{ success: boolean; message: string; data: any }>('/admin/logo/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(settings),
     })
   }
 }
@@ -166,5 +260,21 @@ export const uploadsApi = {
       console.error('Upload failed:', error)
       return { error: error instanceof Error ? error.message : 'Upload failed' }
     }
+  }
+}
+
+// User Profile API
+export const userProfileApi = {
+  // Get user's display name
+  async getDisplayName(): Promise<ApiResponse<{ displayName: string | null }>> {
+    return apiCall<{ displayName: string | null }>('/user/display-name')
+  },
+
+  // Update user's display name
+  async updateDisplayName(displayName: string): Promise<ApiResponse<{ success: boolean; displayName: string }>> {
+    return apiCall<{ success: boolean; displayName: string }>('/user/display-name', {
+      method: 'PATCH',
+      body: JSON.stringify({ displayName }),
+    })
   }
 } 

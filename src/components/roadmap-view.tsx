@@ -49,7 +49,7 @@ export function RoadmapView() {
       </div>
       
       {/* Scrollable Tickets Area - Only This Scrolls */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0 py-1">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-8">
           {columns.map((column) => (
             <div key={column.key} className="space-y-3">

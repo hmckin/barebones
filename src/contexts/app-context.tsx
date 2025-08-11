@@ -2,26 +2,41 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { Suggestion, ThemeColors, UserUpvotes, Comment, ImageAttachment, Logo } from '@/types'
-import { ticketsApi, commentsApi, votesApi, uploadsApi } from '@/lib/api'
+import { ticketsApi, votesApi, uploadsApi, adminTicketsApi } from '@/lib/api'
 
 interface AppContextType {
   suggestions: Suggestion[]
+  adminTickets: Suggestion[] // Add separate state for admin tickets
   themeColors: ThemeColors
   userUpvotes: UserUpvotes
   selectedPost: Suggestion | null
   previousTab: string
-  isSystemAdmin: boolean
+  systemAdmins: AdminUser[]
   logo: Logo | null
   loading: boolean
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => Promise<void>
   addComment: (suggestionId: string, content: string, author: string) => Promise<void>
   upvoteSuggestion: (id: string) => Promise<void> // Toggles upvote on/off
-  updateSuggestionStatus: (id: string, status: Suggestion['status']) => void
+  updateSuggestionStatus: (id: string, status: Suggestion['status']) => Promise<void>
+  toggleSuggestionVisibility: (id: string, hidden: boolean) => Promise<void>
+  deleteSuggestion: (id: string) => Promise<void>
   updateThemeColors: (colors: Partial<ThemeColors>) => void
   updateLogo: (logo: Logo) => void
   hasUserUpvoted: (id: string) => boolean
   selectPost: (post: Suggestion | null, fromTab?: string) => void
   loadTickets: (filters?: any) => Promise<void>
+  loadAdminTickets: () => Promise<void> // Add this function for admin view
+  updateAdminTickets: (tickets: Suggestion[]) => void // Add this function for optimistic updates
+  addSystemAdmin: (email: string) => Promise<void>
+  removeSystemAdmin: (adminId: string) => Promise<void>
+  checkIsSystemAdmin: (userEmail: string) => boolean
+}
+
+interface AdminUser {
+  id: string
+  name: string
+  email: string
+  avatar?: string
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -33,6 +48,7 @@ const initialSuggestions: Suggestion[] = [
     description: 'Add a dark mode option for better user experience in low-light environments.',
     upvotes: 15,
     status: 'In Progress',
+    hidden: false,
     createdAt: new Date('2024-01-15'),
     comments: [
       {
@@ -56,6 +72,7 @@ const initialSuggestions: Suggestion[] = [
     description: 'Create a mobile application for iOS and Android platforms.',
     upvotes: 23,
     status: 'Queued',
+    hidden: false,
     createdAt: new Date('2024-01-10'),
     comments: [
       {
@@ -82,6 +99,7 @@ const initialSuggestions: Suggestion[] = [
     description: 'Implement advanced search functionality with filters and sorting options.',
     upvotes: 8,
     status: 'Completed',
+    hidden: false,
     createdAt: new Date('2024-01-05'),
     comments: [],
     images: [
@@ -115,12 +133,13 @@ const defaultUserUpvotes: UserUpvotes = {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [suggestions, setSuggestions] = useState<Suggestion[]>(initialSuggestions)
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [adminTickets, setAdminTickets] = useState<Suggestion[]>([]) // Add separate state for admin tickets
   const [themeColors, setThemeColors] = useState<ThemeColors>(defaultThemeColors)
   const [userUpvotes, setUserUpvotes] = useState<UserUpvotes>(defaultUserUpvotes)
   const [selectedPost, setSelectedPost] = useState<Suggestion | null>(null)
   const [previousTab, setPreviousTab] = useState<string>('posts')
-  const [isSystemAdmin] = useState<boolean>(true) // Temporary FE flag, later replaced with BE role check
+  const [systemAdmins, setSystemAdmins] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [logo, setLogo] = useState<Logo | null>(null)
 
@@ -169,6 +188,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadTickets()
   }, [])
+
+  // Load system administrators from API
+  useEffect(() => {
+    loadSystemAdmins()
+  }, [])
+
+  const loadSystemAdmins = async () => {
+    try {
+      const response = await fetch('/api/admin/system-admins')
+      if (response.ok) {
+        const result = await response.json()
+        setSystemAdmins(result.data || [])
+      } else {
+        console.error('Failed to load system admins:', response.statusText)
+      }
+    } catch (error) {
+      console.error('Error loading system admins:', error)
+    }
+  }
 
   const addSuggestion = async (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => {
     try {
@@ -228,7 +266,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const addComment = async (suggestionId: string, content: string, author: string) => {
     try {
-      const result = await commentsApi.createComment({
+      const result = await ticketsApi.createComment({
         ticketId: suggestionId,
         content
       })
@@ -263,8 +301,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const hasUserUpvoted = (id: string): boolean => {
     return userUpvotes.upvotedPosts.includes(id)
   }
-
-
 
   const upvoteSuggestion = async (id: string) => {
     try {
@@ -344,14 +380,110 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const updateSuggestionStatus = (id: string, status: Suggestion['status']) => {
-    setSuggestions(prev =>
-      prev.map(suggestion =>
-        suggestion.id === id
-          ? { ...suggestion, status }
-          : suggestion
+  const updateSuggestionStatus = async (id: string, status: Suggestion['status']) => {
+    try {
+      // Optimistically update the UI first
+      setSuggestions(prev =>
+        prev.map(suggestion =>
+          suggestion.id === id
+            ? { ...suggestion, status }
+            : suggestion
+        )
       )
-    )
+
+      // Call the API to persist the change
+      const result = await ticketsApi.updateTicketStatus(id, status)
+      
+      if (result.error) {
+        // If the API call failed, revert the optimistic update
+        setSuggestions(prev =>
+          prev.map(suggestion =>
+            suggestion.id === id
+              ? { ...suggestion, status: suggestion.status }
+              : suggestion
+          )
+        )
+        console.error('Failed to update ticket status:', result.error)
+        throw new Error(result.error)
+      }
+
+      // Update with the actual data from the server
+      if (result.data) {
+        setSuggestions(prev =>
+          prev.map(suggestion =>
+            suggestion.id === id
+              ? { ...suggestion, ...result.data }
+              : suggestion
+          )
+        )
+      }
+    } catch (error) {
+      console.error('Error updating suggestion status:', error)
+      // The optimistic update will be reverted above if there's an error
+    }
+  }
+
+  const toggleSuggestionVisibility = async (id: string, hidden: boolean) => {
+    try {
+      // Optimistically update the UI first
+      setSuggestions(prev =>
+        prev.map(suggestion =>
+          suggestion.id === id
+            ? { ...suggestion, hidden }
+            : suggestion
+        )
+      )
+
+      // Call the API to persist the change
+      const result = await ticketsApi.toggleVisibility(id, hidden)
+      
+      if (result.error) {
+        // If the API call failed, revert the optimistic update
+        setSuggestions(prev =>
+          prev.map(suggestion =>
+            suggestion.id === id
+              ? { ...suggestion, hidden: !hidden }
+              : suggestion
+          )
+        )
+        console.error('Failed to toggle ticket visibility:', result.error)
+        throw new Error(result.error)
+      }
+
+      // Update with the actual data from the server
+      if (result.data) {
+        setSuggestions(prev =>
+          prev.map(suggestion =>
+            suggestion.id === id
+              ? { ...suggestion, ...result.data }
+              : suggestion
+          )
+        )
+      }
+    } catch (error) {
+      console.error('Error toggling suggestion visibility:', error)
+      // The optimistic update will be reverted above if there's an error
+    }
+  }
+
+  const deleteSuggestion = async (id: string) => {
+    try {
+      // Optimistically remove from UI first
+      setSuggestions(prev => prev.filter(suggestion => suggestion.id !== id))
+
+      // Call the API to delete
+      const result = await ticketsApi.deleteTicket(id)
+      
+      if (result.error) {
+        // If the API call failed, revert the optimistic update
+        await loadTickets()
+        console.error('Failed to delete ticket:', result.error)
+        throw new Error(result.error)
+      }
+    } catch (error) {
+      console.error('Error deleting suggestion:', error)
+      // The optimistic update will be reverted above if there's an error
+    }
   }
 
   const updateThemeColors = (colors: Partial<ThemeColors>) => {
@@ -398,9 +530,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadTickets = useCallback(async (filters: any = {}) => {
     try {
       setLoading(true)
-      const result = await ticketsApi.getTickets(filters)
+      // Always filter out hidden tickets for regular users
+      const result = await ticketsApi.getTickets({ ...filters, hidden: false })
       
       if (result.error) {
+        // Don't throw error for unauthenticated users, just log it
+        if (result.error.includes('Unauthorized') || result.error.includes('Forbidden')) {
+          console.log('User not authenticated, skipping ticket load')
+          return
+        }
         throw new Error(result.error)
       }
       
@@ -432,6 +570,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const loadAdminTickets = useCallback(async () => {
+    try {
+      setLoading(true)
+      // Use the dedicated admin API to load all tickets (both visible and hidden)
+      const result = await adminTicketsApi.getAdminTickets({})
+      
+      if (result.error) {
+        if (result.error.includes('Unauthorized') || result.error.includes('Forbidden')) {
+          console.log('User not authenticated, skipping admin ticket load')
+          return
+        }
+        throw new Error(result.error)
+      }
+
+      if (result.data && result.data.tickets && result.data.tickets.length > 0) {
+        const ticketsWithValidComments = result.data.tickets.map(ticket => ({
+          ...ticket,
+          comments: ticket.comments.map(comment => ({
+            ...comment,
+            author: comment.author || 'Anonymous',
+            createdAt: comment.createdAt instanceof Date ? comment.createdAt : new Date(comment.createdAt)
+          }))
+        }))
+        setAdminTickets(ticketsWithValidComments)
+      } else {
+        console.log('No tickets returned from admin API, keeping initial admin tickets')
+      }
+    } catch (error) {
+      console.error('Failed to load admin tickets:', error)
+      // Keep the initial admin tickets if API fails
+      console.log('Admin API failed, keeping initial admin tickets')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const updateAdminTickets = (tickets: Suggestion[]) => {
+    setAdminTickets(tickets)
+  }
+
   const syncUserUpvotes = async (tickets: Suggestion[]) => {
     try {
       // For each ticket, check if the current user has upvoted it
@@ -443,26 +621,81 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const addSystemAdmin = async (email: string) => {
+    try {
+      const response = await fetch('/api/admin/system-admins', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to add system administrator')
+      }
+
+      const result = await response.json()
+      if (result.data) {
+        setSystemAdmins(prev => [...prev, result.data])
+      }
+    } catch (error) {
+      console.error('Failed to add system admin:', error)
+      throw error
+    }
+  }
+
+  const removeSystemAdmin = async (adminId: string) => {
+    try {
+      const response = await fetch(`/api/admin/system-admins/${adminId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to remove system administrator')
+      }
+
+      setSystemAdmins(prev => prev.filter(admin => admin.id !== adminId))
+    } catch (error) {
+      console.error('Failed to remove system admin:', error)
+      throw error
+    }
+  }
+
+  const checkIsSystemAdmin = (userEmail: string) => {
+    return systemAdmins.some(admin => admin.email === userEmail)
+  }
+
   return (
     <AppContext.Provider
       value={{
         suggestions,
+        adminTickets, // Add adminTickets to the context value
         themeColors,
         userUpvotes,
         selectedPost,
         previousTab,
-        isSystemAdmin,
+        systemAdmins,
         logo,
         loading,
         addSuggestion,
         addComment,
         upvoteSuggestion,
         updateSuggestionStatus,
+        toggleSuggestionVisibility,
+        deleteSuggestion,
         updateThemeColors,
         updateLogo,
         hasUserUpvoted,
         selectPost,
-        loadTickets
+        loadTickets,
+        loadAdminTickets,
+        updateAdminTickets,
+        addSystemAdmin,
+        removeSystemAdmin,
+        checkIsSystemAdmin
       }}
     >
       {children}

@@ -41,6 +41,7 @@ model User {
   createdAt     DateTime  @default(now())
   emailVerified DateTime?
   image         String?
+  displayName   String?
   accounts      Account[]
   comments      Comment[]
   sessions      Session[]
@@ -66,6 +67,7 @@ model Ticket {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   authorId     String
+  hidden       Boolean   @default(false)
   comments     Comment[]
   author       User      @relation(fields: [authorId], references: [id])
   votes        Vote[]
@@ -78,14 +80,14 @@ model Comment {
   ticketId  String
   authorId  String
   author    User     @relation(fields: [authorId], references: [id])
-  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 }
 
 model Vote {
   userId    String
   ticketId  String
   createdAt DateTime @default(now())
-  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id])
 
   @@id([userId, ticketId])
@@ -97,4 +99,15 @@ model Settings {
   secondaryColor  String?
   logoUrl         String?
   logoRedirectUrl String?
+}
+
+model SystemAdmin {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email      String    @unique
+  name       String?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([email], map: "idx_system_admins_email")
+  @@map("system_admins")
 }
