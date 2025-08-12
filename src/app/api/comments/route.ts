@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     })
     
     // Transform to match frontend expectations
-    const transformedComments = comments.map((comment: any) => ({
+    const transformedComments = comments.map((comment: { id: string; content: string; author: { displayName: string | null; name: string | null; email: string | null }; createdAt: Date }) => ({
       id: comment.id,
       content: comment.content,
       author: comment.author.displayName || comment.author.name || comment.author.email || 'Anonymous',

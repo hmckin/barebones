@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase-server'
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createServerSupabase(request)
     
@@ -31,7 +28,10 @@ export async function DELETE(
       )
     }
 
-    const { id } = params
+    // Get the ID from the URL
+    const url = new URL(request.url)
+    const pathParts = url.pathname.split('/')
+    const id = pathParts[pathParts.length - 1]
 
     if (!id) {
       return NextResponse.json(

@@ -212,8 +212,8 @@ export const votesApi = {
 // Theme API
 export const themeApi = {
   // Save theme colors
-  async saveThemeColors(colors: { primary: string; secondary: string }): Promise<ApiResponse<{ success: boolean; message: string; data: any }>> {
-    return apiCall<{ success: boolean; message: string; data: any }>('/admin/theme', {
+  async saveThemeColors(colors: { primary: string; secondary: string }): Promise<ApiResponse<{ success: boolean; message: string; data: { primary: string; secondary: string } }>> {
+    return apiCall<{ success: boolean; message: string; data: { primary: string; secondary: string } }>('/admin/theme', {
       method: 'POST',
       body: JSON.stringify(colors),
     })
@@ -228,8 +228,8 @@ export const themeApi = {
 // Logo Settings API
 export const logoSettingsApi = {
   // Update logo settings (like redirect URL)
-  async updateLogoSettings(settings: { redirectUrl?: string }): Promise<ApiResponse<{ success: boolean; message: string; data: any }>> {
-    return apiCall<{ success: boolean; message: string; data: any }>('/admin/logo/settings', {
+  async updateLogoSettings(settings: { redirectUrl?: string }): Promise<ApiResponse<{ success: boolean; message: string; data: { redirectUrl?: string } }>> {
+    return apiCall<{ success: boolean; message: string; data: { redirectUrl?: string } }>('/admin/logo/settings', {
       method: 'PATCH',
       body: JSON.stringify(settings),
     })

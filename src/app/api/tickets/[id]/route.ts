@@ -4,10 +4,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 
 const prisma = new PrismaClient()
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createServerSupabase(request)
     
@@ -20,25 +17,14 @@ export async function PATCH(
       )
     }
 
-    // Check if the requesting user is a system administrator
-    const { data: isAdmin, error: adminCheckError } = await supabase
-      .from('system_admins')
-      .select('id')
-      .eq('email', user.email)
-      .single()
+    // Get the ID from the URL
+    const url = new URL(request.url)
+    const pathParts = url.pathname.split('/')
+    const ticketId = pathParts[pathParts.length - 1]
+    
+    const { status } = await request.json()
 
-    if (adminCheckError || !isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden - System administrator access required' },
-        { status: 403 }
-      )
-    }
-
-    const { id } = params
-    const body = await request.json()
-    const { status } = body
-
-    if (!id) {
+    if (!ticketId) {
       return NextResponse.json(
         { error: 'Ticket ID is required' },
         { status: 400 }
@@ -54,7 +40,7 @@ export async function PATCH(
 
     // Update the ticket status
     const updatedTicket = await prisma.ticket.update({
-      where: { id },
+      where: { id: ticketId },
       data: { status },
       include: {
         author: {
@@ -103,10 +89,10 @@ export async function PATCH(
       createdAt: updatedTicket.createdAt,
       updatedAt: updatedTicket.updatedAt,
       author: updatedTicket.author,
-      comments: updatedTicket.comments.map((comment: any) => ({
+      comments: updatedTicket.comments.map((comment: { id: string; content: string; author: { id: string; name: string | null; email: string | null } | null; createdAt: Date }) => ({
         id: comment.id,
         content: comment.content,
-        author: comment.author?.displayName || comment.author?.name || comment.author?.email || 'Anonymous',
+        author: comment.author?.name || comment.author?.email || 'Anonymous',
         createdAt: new Date(comment.createdAt)
       })),
       images: updatedTicket.imageUrl ? [{
@@ -131,12 +117,12 @@ export async function PATCH(
   }
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const { id } = params
+    // Get the ID from the URL
+    const url = new URL(request.url)
+    const pathParts = url.pathname.split('/')
+    const id = pathParts[pathParts.length - 1]
 
     if (!id) {
       return NextResponse.json(
@@ -203,7 +189,7 @@ export async function GET(
       createdAt: ticket.createdAt,
       updatedAt: ticket.updatedAt,
       author: ticket.author,
-      comments: ticket.comments.map((comment: any) => ({
+      comments: ticket.comments.map((comment: { id: string; content: string; author: { id: string; name: string | null; email: string | null; displayName: string | null } | null; createdAt: Date }) => ({
         id: comment.id,
         content: comment.content,
         author: comment.author?.displayName || comment.author?.name || comment.author?.email || 'Anonymous',

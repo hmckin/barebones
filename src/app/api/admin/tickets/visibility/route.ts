@@ -88,7 +88,7 @@ export async function PATCH(request: NextRequest) {
       createdAt: updatedTicket.createdAt,
       updatedAt: updatedTicket.updatedAt,
       author: updatedTicket.author,
-      comments: updatedTicket.comments.map((comment: any) => ({
+      comments: updatedTicket.comments.map((comment: { id: string; content: string; author: { name: string | null; email: string | null } | null; createdAt: Date }) => ({
         id: comment.id,
         content: comment.content,
         author: comment.author?.name || comment.author?.email || 'Anonymous',

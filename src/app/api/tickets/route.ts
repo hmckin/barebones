@@ -23,7 +23,13 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'desc'
     
     // Build where clause
-    const where: any = {}
+    const where: {
+      hidden?: boolean;
+      status?: string;
+      OR?: Array<{ title: { contains: string; mode: 'insensitive' } } | { description: { contains: string; mode: 'insensitive' } }>;
+      authorId?: string;
+      createdAt?: { gte: Date };
+    } = {}
     
     // Always filter out hidden tickets for regular users
     where.hidden = false
@@ -44,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Build orderBy clause
-    const orderBy: any = {}
+    const orderBy: { [key: string]: string } = {}
     if (sortBy === 'upvotes') {
       orderBy.upvotesCount = sortOrder
     } else if (sortBy === 'trending') {
@@ -108,7 +114,25 @@ export async function GET(request: NextRequest) {
     ])
     
     // Transform data to match frontend expectations
-    const transformedTickets = tickets.map((ticket: any) => ({
+    const transformedTickets = tickets.map((ticket: {
+      id: string;
+      title: string;
+      description: string;
+      status: string;
+      hidden: boolean;
+      upvotesCount: number;
+      createdAt: Date;
+      updatedAt: Date;
+      imageUrl: string | null;
+      author: { id: string; name: string | null; email: string | null; image: string | null };
+      comments: Array<{
+        id: string;
+        content: string;
+        createdAt: Date;
+        author: { id: string; name: string | null; email: string | null; displayName: string | null };
+      }>;
+      _count: { comments: number; votes: number };
+    }) => ({
       id: ticket.id,
       title: ticket.title,
       description: ticket.description,
@@ -118,7 +142,12 @@ export async function GET(request: NextRequest) {
       createdAt: ticket.createdAt,
       updatedAt: ticket.updatedAt,
       author: ticket.author,
-      comments: ticket.comments.map((comment: any) => ({
+      comments: ticket.comments.map((comment: {
+        id: string;
+        content: string;
+        createdAt: Date;
+        author: { id: string; name: string | null; email: string | null; displayName: string | null };
+      }) => ({
         id: comment.id,
         content: comment.content,
         author: comment.author?.displayName || comment.author?.name || comment.author?.email || 'Anonymous',

@@ -97,6 +97,9 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
   const { user } = useAuth()
   const currentPost = suggestions.find(s => s.id === post.id) || post
   const [userDisplayName, setUserDisplayName] = useState<string | null>(null)
+  const [commentContent, setCommentContent] = useState('')
+  const [showImages, setShowImages] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   
   // Check if current user is a system administrator
   const currentUserIsSystemAdmin = user?.email ? checkIsSystemAdmin(user.email) : false
@@ -149,9 +152,6 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
   }
   
   const isUpvoted = hasUserUpvoted(currentPost.id)
-  const [commentContent, setCommentContent] = useState('')
-  const [showImages, setShowImages] = useState(false)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault()

@@ -4,10 +4,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 
 const prisma = new PrismaClient()
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createServerSupabase()
     
@@ -28,7 +25,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden: System admin access required' }, { status: 403 })
     }
 
-    const ticketId = params.id
+    // Get the ID from the URL
+    const url = new URL(request.url)
+    const pathParts = url.pathname.split('/')
+    const ticketId = pathParts[pathParts.length - 1]
+    
     const { status } = await request.json()
 
     if (!status) {
@@ -97,7 +98,7 @@ export async function PATCH(
       createdAt: updatedTicket.createdAt,
       updatedAt: updatedTicket.updatedAt,
       author: updatedTicket.author,
-      comments: updatedTicket.comments.map((comment: any) => ({
+      comments: updatedTicket.comments.map((comment: { id: string; content: string; author: { name: string | null; email: string | null } | null; createdAt: Date }) => ({
         id: comment.id,
         content: comment.content,
         author: comment.author?.name || comment.author?.email || 'Anonymous',
