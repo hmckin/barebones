@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { CreatePost } from '@/components/create-post'
-import { RequestsView, RequestsHeader } from '@/components/requests-view'
+import { RequestsView } from '@/components/requests-view'
 import { ExpandedPost } from '@/components/expanded-post'
 import { RoadmapView } from '@/components/roadmap-view'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -12,11 +12,11 @@ import { Lightbulb, SquareKanban} from 'lucide-react'
 import { useApp } from '@/contexts/app-context'
 
 export default function Home() {
-  const { themeColors, selectedPost, logo, selectPost, loading } = useApp()
+  const { themeColors, selectedPost, logo, selectPost } = useApp()
   const [mounted, setMounted] = useState(false)
   const [sortBy, setSortBy] = useState('trending')
   const [activeTab, setActiveTab] = useState('requests')
-  const [searchQuery, setSearchQuery] = useState('')
+
   const [createPostSearchQuery, setCreatePostSearchQuery] = useState('')
 
   useEffect(() => {
@@ -147,8 +147,6 @@ export default function Home() {
                       <div className="flex-1 overflow-y-auto px-2 pr-6">
                         <RequestsView 
                           sortBy={sortBy} 
-                          showStatus={false} 
-                          searchQuery={searchQuery}
                           createPostFilter={createPostSearchQuery}
                           onSortChange={setSortBy}
                         />

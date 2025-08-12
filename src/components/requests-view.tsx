@@ -27,63 +27,23 @@ const ProgressBadge = ({ status }: { status: string }) => {
 
 interface RequestsViewProps {
   sortBy: string
-  showStatus?: boolean
-  searchQuery?: string
   onSortChange?: (sortBy: string) => void
   createPostFilter?: string
 }
 
-export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSortChange, createPostFilter = '' }: RequestsViewProps) {
-  const { upvoteSuggestion, hasUserUpvoted, selectPost, hasInitialized } = useApp()
+export function RequestsView({ sortBy, onSortChange, createPostFilter = '' }: RequestsViewProps) {
+  const { upvoteSuggestion, hasUserUpvoted, selectPost } = useApp()
   const { suggestions, loading, updateSorting, updateSearch, searchInput } = useTickets()
   const [searchBarInput, setSearchBarInput] = useState('')
-  const [hasAppliedInitialSort, setHasAppliedInitialSort] = useState(false)
 
-  // Debug logging to track state changes
-  React.useEffect(() => {
-    console.log('RequestsView state:', { loading, hasInitialized, suggestionsCount: suggestions.length })
-  }, [loading, hasInitialized, suggestions.length])
 
-  // Update sorting when props change, but only after initialization and only for actual changes
-  React.useEffect(() => {
-    // Only apply sorting after the app context has initialized
-    if (!hasInitialized) {
-      return
-    }
-    
-    // Add a small delay to ensure the app context has fully initialized
-    const timer = setTimeout(() => {
-      // Only call updateSorting if we haven't applied the initial sort yet
-      // or if the sortBy prop has actually changed from the previous value
-      if (!hasAppliedInitialSort) {
-        console.log('RequestsView: Applying initial sort:', sortBy)
-        if (sortBy === 'trending') {
-          updateSorting('upvotes', 'desc')
-        } else if (sortBy === 'newest') {
-          updateSorting('createdAt', 'desc')
-        } else if (sortBy === 'oldest') {
-          updateSorting('createdAt', 'asc')
-        }
-        setHasAppliedInitialSort(true)
-      }
-    }, 100) // Small delay to prevent race condition
-
-    return () => clearTimeout(timer)
-  }, [sortBy, updateSorting, hasInitialized, hasAppliedInitialSort])
-
-  // Update search when prop changes (for external search triggers)
-  React.useEffect(() => {
-    if (searchQuery !== searchInput) {
-      updateSearch(searchQuery)
-    }
-  }, [searchQuery, updateSearch, searchInput])
 
   const handleSearchChange = (query: string) => {
     setSearchBarInput(query)
     updateSearch(query)
   }
 
-  const handleUpvote = async (postId: string, e: React.MouseEvent) => {
+  const handleUpvote = async (postId: string, e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     
     try {
@@ -92,8 +52,6 @@ export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSo
       // No specific cleanup needed for rapid clicking
     }
   }
-
-  // Don't return early - always render the header and conditionally show content
 
   // Apply create post filtering locally without affecting the search bar
   let filteredSuggestions = suggestions
@@ -138,6 +96,7 @@ export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSo
           sortBy={sortBy} 
           searchValue={searchBarInput}
           onSortChange={(newSortBy) => {
+            // Update sorting in the hook for local state management
             if (newSortBy === 'trending') {
               updateSorting('upvotes', 'desc')
             } else if (newSortBy === 'newest') {
@@ -145,12 +104,8 @@ export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSo
             } else if (newSortBy === 'oldest') {
               updateSorting('createdAt', 'asc')
             } else if (newSortBy === 'alphabetical') {
-              // For alphabetical sorting, we'll fetch fresh data and sort locally
-              // Use 'createdAt' as the base sort to get fresh data
               updateSorting('createdAt', 'desc')
             } else if (newSortBy === 'reverse-alphabetical') {
-              // For reverse alphabetical sorting, we'll fetch fresh data and sort locally
-              // Use 'createdAt' as the base sort to get fresh data
               updateSorting('createdAt', 'desc')
             }
             // Call the parent callback if provided
@@ -162,8 +117,8 @@ export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSo
       
       {/* Scrollable Posts List */}
       <div className="flex-1 overflow-y-auto space-y-0 px-2 py-0.5 pr-6">
-        {loading || !hasInitialized || suggestions.length === 0 ? (
-          // Show loading skeletons when loading, not initialized, or no suggestions
+        {loading || suggestions.length === 0 ? (
+          // Show loading skeletons when loading or no suggestions
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
               <Card key={i} className="bg-transparent border-0 shadow-none">
@@ -177,7 +132,7 @@ export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSo
             ))}
           </div>
         ) : (
-          // Show actual posts when not loading, initialized, and has suggestions
+          // Show actual posts when not loading and has suggestions
           <>
             {sortedSuggestions.map((suggestion, index) => {
               const isUpvoted = hasUserUpvoted(suggestion.id)
@@ -238,7 +193,7 @@ export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSo
                           <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
                             {suggestion.title}
                           </h3>
-                          {showStatus && <ProgressBadge status={suggestion.status} />}
+
                           {suggestion.description && (
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
                               {suggestion.description}
@@ -402,7 +357,7 @@ export function RequestsHeader({ sortBy, searchValue, onSortChange, onSearchChan
                       }}
                       className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
                     >
-                      <X className="w-3 h-3 text-gray-400" />
+                      <X className="w-3 w-3 text-gray-400" />
                     </button>
                   )}
                 </div>

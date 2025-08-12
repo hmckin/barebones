@@ -127,7 +127,6 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
             
             if (logo) {
               // Logo is already saved when uploaded, just update any redirect URL changes
-              console.log('Logo settings saved:', logo)
               
               // Update logo with current redirect URL if it changed
               if (logo.redirectUrl !== logoRedirectUrl) {
@@ -147,7 +146,6 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                 }
               }
             }
-            console.log('Theme colors saved:', themeColors)
           } catch (error) {
             console.error('Error saving theme colors:', error)
             throw error
@@ -168,7 +166,7 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                 throw new Error(result.error)
               }
               if (result.data) {
-                console.log('Display name saved:', result.data.displayName)
+                // Display name saved successfully
               }
             }
             
@@ -183,12 +181,10 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
         case 'users':
           // System admin changes are already handled by the individual functions
           // (addSystemAdmin, removeSystemAdmin) so we don't need to do anything here
-          console.log('System admin changes saved')
           break
         case 'requests':
           // Request changes are already handled by the individual functions
           // (handleToggleVisibility, handleDeleteRequest) so we don't need to do anything here
-          console.log('Request changes saved')
           break
       }
       
@@ -223,12 +219,8 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
       const updatedTickets = adminTickets.filter(ticket => ticket.id !== requestId)
       updateAdminTickets(updatedTickets)
       
-      console.log('Attempting to delete ticket:', requestId)
-      
       // Use the dedicated admin API to delete the ticket
       const result = await adminTicketsApi.deleteTicket(requestId)
-      
-      console.log('Delete API result:', result)
       
       if (result.error) {
         // Revert optimistic update on error
@@ -426,12 +418,9 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
   // Load user's display name
   const loadUserDisplayName = async () => {
     try {
-      console.log('SystemAdminModal: Loading display name for user:', user?.email)
       const result = await userProfileApi.getDisplayName()
-      console.log('SystemAdminModal: Display name API response:', result)
       if (result.data && !result.error) {
         setDisplayName(result.data.displayName || '')
-        console.log('SystemAdminModal: Set display name to:', result.data.displayName)
       } else {
         console.error('SystemAdminModal: Display name API error:', result.error)
       }

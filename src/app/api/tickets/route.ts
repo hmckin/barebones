@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     
     // Pagination
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const limit = parseInt(searchParams.get('limit') || '1000')
     const offset = (page - 1) * limit
     
     // Filtering

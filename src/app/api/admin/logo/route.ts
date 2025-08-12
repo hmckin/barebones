@@ -48,8 +48,7 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now()
     const filename = `logos/${timestamp}-${file.name}`
     
-    console.log('Attempting to upload logo to:', filename)
-    console.log('File size:', file.size, 'File type:', file.type)
+
     
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
