@@ -12,7 +12,7 @@ import { useApp } from '@/contexts/app-context'
 import { useAuth } from '@/hooks/use-auth'
 import { ColorPicker } from '@/components/color-picker'
 import { getStatusColor } from '@/lib/utils'
-import { adminTicketsApi, themeApi, logoSettingsApi } from '@/lib/api'
+import { adminTicketsApi, themeApi, logoSettingsApi, userProfileApi } from '@/lib/api'
 
 interface SystemAdminModalProps {
   isOpen: boolean
@@ -57,6 +57,13 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
     setLogoRedirectUrl(logo?.redirectUrl || '')
   }, [logo])
 
+  // Load user's display name when modal opens
+  React.useEffect(() => {
+    if (isOpen && user?.email) {
+      loadUserDisplayName()
+    }
+  }, [isOpen, user?.email])
+
   // Load tickets when modal opens
   React.useEffect(() => {
     if (isOpen) {
@@ -68,6 +75,7 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
       setRemoveAdminConfirmId(null)
       setUpdatingVisibilityId(null)
       setDeletingTicketId(null)
+      setSaveMessage(null)
     }
   }, [isOpen])
 
@@ -148,9 +156,21 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
         case 'profile':
           // Save profile settings
           try {
-            // In a real implementation, you'd save this to your database
-            // For now, we'll just log the changes
-            console.log('Profile settings saved:', { displayName })
+            // Validate display name
+            if (displayName.trim() && displayName.length > 50) {
+              throw new Error('Display name must be 50 characters or less')
+            }
+            
+            // Save display name to backend
+            if (displayName.trim()) {
+              const result = await userProfileApi.updateDisplayName(displayName.trim())
+              if (result.error) {
+                throw new Error(result.error)
+              }
+              if (result.data) {
+                console.log('Display name saved:', result.data.displayName)
+              }
+            }
             
             // Show success message
             setSaveMessage({ type: 'success', message: 'Profile settings saved successfully!' })
@@ -403,7 +423,22 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
     }
   }
 
-
+  // Load user's display name
+  const loadUserDisplayName = async () => {
+    try {
+      console.log('SystemAdminModal: Loading display name for user:', user?.email)
+      const result = await userProfileApi.getDisplayName()
+      console.log('SystemAdminModal: Display name API response:', result)
+      if (result.data && !result.error) {
+        setDisplayName(result.data.displayName || '')
+        console.log('SystemAdminModal: Set display name to:', result.data.displayName)
+      } else {
+        console.error('SystemAdminModal: Display name API error:', result.error)
+      }
+    } catch (error) {
+      console.error('SystemAdminModal: Error loading display name:', error)
+    }
+  }
 
   const handleLoadThemeColors = async () => {
     try {
@@ -604,7 +639,14 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                           placeholder="Enter display name" 
                           value={displayName}
                           onChange={(e) => setDisplayName(e.target.value)}
+                          className="w-full"
+                          maxLength={50}
                         />
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs text-gray-500">
+                            {displayName.length}/50 characters
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

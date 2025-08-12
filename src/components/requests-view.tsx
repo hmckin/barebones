@@ -34,20 +34,42 @@ interface RequestsViewProps {
 }
 
 export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSortChange, createPostFilter = '' }: RequestsViewProps) {
-  const { upvoteSuggestion, hasUserUpvoted, selectPost } = useApp()
+  const { upvoteSuggestion, hasUserUpvoted, selectPost, hasInitialized } = useApp()
   const { suggestions, loading, updateSorting, updateSearch, searchInput } = useTickets()
   const [searchBarInput, setSearchBarInput] = useState('')
+  const [hasAppliedInitialSort, setHasAppliedInitialSort] = useState(false)
 
-  // Update sorting when props change
+  // Debug logging to track state changes
   React.useEffect(() => {
-    if (sortBy === 'trending') {
-      updateSorting('upvotes', 'desc')
-    } else if (sortBy === 'newest') {
-      updateSorting('createdAt', 'desc')
-    } else if (sortBy === 'oldest') {
-      updateSorting('createdAt', 'asc')
+    console.log('RequestsView state:', { loading, hasInitialized, suggestionsCount: suggestions.length })
+  }, [loading, hasInitialized, suggestions.length])
+
+  // Update sorting when props change, but only after initialization and only for actual changes
+  React.useEffect(() => {
+    // Only apply sorting after the app context has initialized
+    if (!hasInitialized) {
+      return
     }
-  }, [sortBy, updateSorting])
+    
+    // Add a small delay to ensure the app context has fully initialized
+    const timer = setTimeout(() => {
+      // Only call updateSorting if we haven't applied the initial sort yet
+      // or if the sortBy prop has actually changed from the previous value
+      if (!hasAppliedInitialSort) {
+        console.log('RequestsView: Applying initial sort:', sortBy)
+        if (sortBy === 'trending') {
+          updateSorting('upvotes', 'desc')
+        } else if (sortBy === 'newest') {
+          updateSorting('createdAt', 'desc')
+        } else if (sortBy === 'oldest') {
+          updateSorting('createdAt', 'asc')
+        }
+        setHasAppliedInitialSort(true)
+      }
+    }, 100) // Small delay to prevent race condition
+
+    return () => clearTimeout(timer)
+  }, [sortBy, updateSorting, hasInitialized, hasAppliedInitialSort])
 
   // Update search when prop changes (for external search triggers)
   React.useEffect(() => {
@@ -93,18 +115,20 @@ export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSo
   }
 
   // Apply local sorting based on the current sortBy prop
-  let sortedSuggestions = [...filteredSuggestions]
-  if (sortBy === 'trending' || sortBy === 'upvotes') {
-    sortedSuggestions.sort((a, b) => b.upvotes - a.upvotes)
-  } else if (sortBy === 'newest') {
-    sortedSuggestions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  } else if (sortBy === 'oldest') {
-    sortedSuggestions.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-  } else if (sortBy === 'alphabetical') {
-    sortedSuggestions.sort((a, b) => a.title.localeCompare(b.title))
-  } else if (sortBy === 'reverse-alphabetical') {
-    sortedSuggestions.sort((a, b) => b.title.localeCompare(a.title))
-  }
+  const sortedSuggestions = [...filteredSuggestions].sort((a, b) => {
+    if (sortBy === 'trending' || sortBy === 'upvotes') {
+      return b.upvotes - a.upvotes
+    } else if (sortBy === 'newest') {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    } else if (sortBy === 'oldest') {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    } else if (sortBy === 'alphabetical') {
+      return a.title.localeCompare(b.title)
+    } else if (sortBy === 'reverse-alphabetical') {
+      return b.title.localeCompare(a.title)
+    }
+    return 0
+  })
 
   return (
     <div className="h-full flex flex-col">
@@ -138,8 +162,8 @@ export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSo
       
       {/* Scrollable Posts List */}
       <div className="flex-1 overflow-y-auto space-y-0 px-2 py-0.5 pr-6">
-        {loading ? (
-          // Show loading skeletons when loading
+        {loading || !hasInitialized || suggestions.length === 0 ? (
+          // Show loading skeletons when loading, not initialized, or no suggestions
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
               <Card key={i} className="bg-transparent border-0 shadow-none">
@@ -153,7 +177,7 @@ export function RequestsView({ sortBy, showStatus = true, searchQuery = '', onSo
             ))}
           </div>
         ) : (
-          // Show actual posts when not loading
+          // Show actual posts when not loading, initialized, and has suggestions
           <>
             {sortedSuggestions.map((suggestion, index) => {
               const isUpvoted = hasUserUpvoted(suggestion.id)

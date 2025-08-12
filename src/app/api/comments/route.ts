@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             email: true,
-            image: true
+            image: true,
+            displayName: true
           }
         }
       }
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     const transformedComments = comments.map((comment: any) => ({
       id: comment.id,
       content: comment.content,
-      author: comment.author.name || comment.author.email || 'Anonymous',
+      author: comment.author.displayName || comment.author.name || comment.author.email || 'Anonymous',
       createdAt: new Date(comment.createdAt)
     }))
     
@@ -85,7 +86,8 @@ export async function POST(request: NextRequest) {
         data: {
           email: user.email,
           name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          role: 'user'
+          role: 'user',
+          displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
         }
       })
     }
@@ -115,7 +117,8 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true,
             email: true,
-            image: true
+            image: true,
+            displayName: true
           }
         }
       }
@@ -125,7 +128,7 @@ export async function POST(request: NextRequest) {
     const transformedComment = {
       id: comment.id,
       content: comment.content,
-      author: comment.author.name || comment.author.email || 'Anonymous',
+      author: comment.author.displayName || comment.author.name || comment.author.email || 'Anonymous',
       createdAt: new Date(comment.createdAt)
     }
     

@@ -101,7 +101,8 @@ export async function GET(request: NextRequest) {
                 select: {
                   id: true,
                   name: true,
-                  email: true
+                  email: true,
+                  displayName: true
                 }
               }
             }
@@ -136,7 +137,7 @@ export async function GET(request: NextRequest) {
       comments: ticket.comments.map((comment: any) => ({
         id: comment.id,
         content: comment.content,
-        author: comment.author?.name || comment.author?.email || 'Anonymous',
+        author: comment.author?.displayName || comment.author?.name || comment.author?.email || 'Anonymous',
         createdAt: new Date(comment.createdAt)
       })),
       images: ticket.imageUrl ? [{

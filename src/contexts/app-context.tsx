@@ -14,6 +14,7 @@ interface AppContextType {
   systemAdmins: AdminUser[]
   logo: Logo | null
   loading: boolean
+  hasInitialized: boolean // Track if initial load has completed
   addSuggestion: (suggestion: Omit<Suggestion, 'id' | 'createdAt' | 'comments' | 'images'>, images?: ImageAttachment[]) => Promise<void>
   addComment: (suggestionId: string, content: string, author: string) => Promise<void>
   upvoteSuggestion: (id: string) => Promise<void> // Toggles upvote on/off
@@ -140,8 +141,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedPost, setSelectedPost] = useState<Suggestion | null>(null)
   const [previousTab, setPreviousTab] = useState<string>('posts')
   const [systemAdmins, setSystemAdmins] = useState<AdminUser[]>([])
-  const [loading, setLoading] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(true) // Start with loading true to prevent flicker
   const [logo, setLogo] = useState<Logo | null>(null)
+  const [hasInitialized, setHasInitialized] = useState<boolean>(false) // Track if we've completed initial load
 
   // Load theme colors and user upvotes from localStorage on mount
   useEffect(() => {
@@ -186,8 +188,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Load initial tickets
   useEffect(() => {
+    console.log('AppContext: Starting initial ticket load')
     loadTickets()
+    
+    // Add a timeout fallback to ensure we don't get stuck in loading state
+    const timeoutId = setTimeout(() => {
+      console.log('AppContext: Timeout fallback - setting loading false and initialized true')
+      setLoading(false)
+      setHasInitialized(true)
+    }, 10000) // 10 second timeout
+    
+    return () => clearTimeout(timeoutId)
   }, [])
+
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log('AppContext state change:', { loading, hasInitialized, suggestionsCount: suggestions.length })
+  }, [loading, hasInitialized, suggestions.length])
 
   // Load system administrators from API
   useEffect(() => {
@@ -276,10 +293,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (result.data) {
-        // Ensure the comment has the author field set and proper date
+        // Always use the backend author data to ensure consistency
         const commentWithAuthor = {
           ...result.data,
-          author: result.data.author || author || 'Anonymous',
+          author: result.data.author || 'Anonymous',
           createdAt: result.data.createdAt instanceof Date ? result.data.createdAt : new Date(result.data.createdAt)
         }
         
@@ -528,6 +545,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const loadTickets = useCallback(async (filters: any = {}) => {
+    console.log('AppContext: loadTickets called with filters:', filters)
     try {
       setLoading(true)
       // Always filter out hidden tickets for regular users
@@ -543,6 +561,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (result.data && result.data.tickets && result.data.tickets.length > 0) {
+        console.log('AppContext: Setting suggestions from API:', result.data.tickets.length)
         // Ensure all comments have proper author fields and dates
         const ticketsWithValidComments = result.data.tickets.map(ticket => ({
           ...ticket,
@@ -558,15 +577,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Sync user upvotes with backend
         await syncUserUpvotes(ticketsWithValidComments)
       } else {
-        // If no tickets returned, keep the initial suggestions
-        console.log('No tickets returned from API, keeping initial suggestions')
+        // If no tickets returned, set empty array
+        console.log('No tickets returned from API, setting empty suggestions')
+        setSuggestions([])
       }
     } catch (error) {
       console.error('Failed to load tickets:', error)
-      // Keep the initial suggestions if API fails
-      console.log('API failed, keeping initial suggestions')
+      // Set empty array if API fails
+      console.log('API failed, setting empty suggestions')
+      setSuggestions([])
     } finally {
+      console.log('AppContext: loadTickets completed, setting loading false and initialized true')
       setLoading(false)
+      setHasInitialized(true) // Mark that we've completed the initial load
     }
   }, [])
 
@@ -680,6 +703,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         systemAdmins,
         logo,
         loading,
+        hasInitialized, // Add hasInitialized to the context value
         addSuggestion,
         addComment,
         upvoteSuggestion,

@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useApp } from '@/contexts/app-context'
-import { ticketsApi, TicketFilters, PaginatedResponse } from '@/lib/api'
-import { Suggestion } from '@/types'
+import { TicketFilters } from '@/lib/api'
 
 // Custom hook for debounced search
 function useDebounce(value: string, delay: number) {
@@ -21,7 +20,7 @@ function useDebounce(value: string, delay: number) {
 }
 
 export function useTickets() {
-  const { suggestions, loading, loadTickets } = useApp()
+  const { suggestions, loading, loadTickets, hasInitialized } = useApp()
   const [filters, setFilters] = useState<TicketFilters>({
     page: 1,
     limit: 10,
@@ -29,16 +28,20 @@ export function useTickets() {
     sortOrder: 'desc'
   })
   const [searchInput, setSearchInput] = useState('')
+  const [hasSetInitialFilters, setHasSetInitialFilters] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [hasAppliedInitialSorting, setHasAppliedInitialSorting] = useState(false)
   
   // Debounce the search input to prevent excessive API calls
   const debouncedSearch = useDebounce(searchInput, 300)
 
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 0
-  })
+  // Track when the context has fully initialized
+  useEffect(() => {
+    if (hasInitialized && !isInitialized) {
+      console.log('useTickets: AppContext has initialized, marking hook as initialized')
+      setIsInitialized(true)
+    }
+  }, [hasInitialized, isInitialized])
 
   // Update filters when debounced search changes
   useEffect(() => {
@@ -47,20 +50,46 @@ export function useTickets() {
     }
   }, [debouncedSearch, filters.search])
 
-  // Load tickets when filters change
+  // Load tickets when filters change, but only after initialization and when filters actually change
   useEffect(() => {
-    // Skip the initial load since the app context already loads tickets
-    const isInitialLoad = filters.page === 1 && 
-                         filters.limit === 10 && 
-                         filters.sortBy === 'createdAt' && 
-                         filters.sortOrder === 'desc' &&
-                         !filters.search &&
-                         !filters.status
+    console.log('useTickets: Filters changed:', filters)
     
-    if (!isInitialLoad) {
-      loadTickets(filters)
+    // Don't make any API calls until the context has fully initialized
+    if (!isInitialized) {
+      console.log('useTickets: Skipping API call - hook not yet initialized')
+      return
     }
-  }, [filters, loadTickets])
+    
+    // Skip the initial load since the app context already loads tickets
+    // Only make API calls when filters actually change from their initial values
+    const isInitialFilterState = (filters.page === 1 || !filters.page) && 
+                                (filters.limit === 10 || !filters.limit) && 
+                                filters.sortBy === 'createdAt' && 
+                                filters.sortOrder === 'desc' &&
+                                !filters.search &&
+                                !filters.status
+    
+    // Don't make API calls if we're still in initial filter state and haven't applied initial sorting
+    if (isInitialFilterState && !hasAppliedInitialSorting) {
+      console.log('useTickets: Skipping API call - initial filter state, initial sorting not yet applied')
+      return
+    }
+    
+    // Only make API calls when filters have actually changed from initial state
+    // or when we have non-default filters
+    const hasNonDefaultFilters = filters.search || 
+                                filters.status || 
+                                filters.sortBy !== 'createdAt' || 
+                                filters.sortOrder !== 'desc' ||
+                                (filters.page && filters.page > 1)
+    
+    if (hasNonDefaultFilters || (hasSetInitialFilters && hasAppliedInitialSorting)) {
+      console.log('useTickets: Calling loadTickets with filters:', filters)
+      loadTickets(filters)
+    } else {
+      console.log('useTickets: Skipping API call - using context data. hasNonDefaultFilters:', hasNonDefaultFilters, 'hasSetInitialFilters:', hasSetInitialFilters, 'hasAppliedInitialSorting:', hasAppliedInitialSorting)
+    }
+  }, [filters, loadTickets, isInitialized, hasSetInitialFilters, hasAppliedInitialSorting])
 
   // Update filters
   const updateFilters = useCallback((newFilters: Partial<TicketFilters>) => {
@@ -78,8 +107,35 @@ export function useTickets() {
 
   // Update sorting
   const updateSorting = useCallback((sortBy: TicketFilters['sortBy'], sortOrder: TicketFilters['sortOrder'] = 'desc') => {
+    console.log('useTickets: updateSorting called with:', { sortBy, sortOrder, hasSetInitialFilters, isInitialized, hasAppliedInitialSorting })
+    
+    // Don't update filters until the hook is initialized
+    if (!isInitialized) {
+      console.log('useTickets: Skipping sorting update - hook not yet initialized')
+      return
+    }
+    
+    // Check if this is just setting up the initial default sorting
+    // These are the default sorts that don't require API calls
+    const isInitialSorting = (sortBy === 'createdAt' && sortOrder === 'desc') || 
+                            (sortBy === 'upvotes' && sortOrder === 'desc')
+    
+    if (isInitialSorting && !hasAppliedInitialSorting) {
+      console.log('useTickets: Applying initial sorting, not marking as filter change')
+      setHasAppliedInitialSorting(true)
+      // Don't update filters for initial sorting setup
+      return
+    }
+    
+    // For any other sorting changes, update the filters
     setFilters(prev => ({ ...prev, sortBy, sortOrder }))
-  }, [])
+    
+    // Mark that we've set initial filters after the first actual change
+    if (!hasSetInitialFilters) {
+      console.log('useTickets: Setting hasSetInitialFilters to true')
+      setHasSetInitialFilters(true)
+    }
+  }, [hasSetInitialFilters, isInitialized, hasAppliedInitialSorting])
 
   // Update search input (debounced)
   const updateSearch = useCallback((search: string) => {
@@ -142,8 +198,10 @@ export function useTickets() {
 
   // Refresh tickets
   const refreshTickets = useCallback(() => {
-    loadTickets(filters)
-  }, [loadTickets, filters])
+    if (isInitialized) {
+      loadTickets(filters)
+    }
+  }, [loadTickets, filters, isInitialized])
 
   return {
     // Data
@@ -151,9 +209,8 @@ export function useTickets() {
     allSuggestions: suggestions,
     loading,
     
-    // Filters and pagination
+    // Filters
     filters,
-    pagination,
     
     // Actions
     updateFilters,
@@ -168,6 +225,6 @@ export function useTickets() {
     
     // Computed values
     totalCount: getFilteredSuggestions().length,
-    hasMore: (filters.page || 1) * (filters.limit || 10) < getFilteredSuggestions().length
+    hasMore: ((filters.page || 1) * (filters.limit || 10)) < getFilteredSuggestions().length
   }
 } 

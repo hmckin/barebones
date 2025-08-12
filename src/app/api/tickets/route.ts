@@ -85,7 +85,8 @@ export async function GET(request: NextRequest) {
                 select: {
                   id: true,
                   name: true,
-                  email: true
+                  email: true,
+                  displayName: true
                 }
               }
             }
@@ -120,7 +121,7 @@ export async function GET(request: NextRequest) {
       comments: ticket.comments.map((comment: any) => ({
         id: comment.id,
         content: comment.content,
-        author: comment.author?.name || comment.author?.email || 'Anonymous',
+        author: comment.author?.displayName || comment.author?.name || comment.author?.email || 'Anonymous',
         createdAt: new Date(comment.createdAt)
       })),
       images: ticket.imageUrl ? [{
@@ -195,7 +196,8 @@ export async function POST(request: NextRequest) {
         data: {
           email: user.email,
           name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          role: 'user'
+          role: 'user',
+          displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
         }
       })
     }

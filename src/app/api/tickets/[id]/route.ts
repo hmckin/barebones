@@ -106,7 +106,7 @@ export async function PATCH(
       comments: updatedTicket.comments.map((comment: any) => ({
         id: comment.id,
         content: comment.content,
-        author: comment.author?.name || comment.author?.email || 'Anonymous',
+        author: comment.author?.displayName || comment.author?.name || comment.author?.email || 'Anonymous',
         createdAt: new Date(comment.createdAt)
       })),
       images: updatedTicket.imageUrl ? [{
@@ -166,7 +166,8 @@ export async function GET(
               select: {
                 id: true,
                 name: true,
-                email: true
+                email: true,
+                displayName: true
               }
             }
           }
@@ -205,7 +206,7 @@ export async function GET(
       comments: ticket.comments.map((comment: any) => ({
         id: comment.id,
         content: comment.content,
-        author: comment.author?.name || comment.author?.email || 'Anonymous',
+        author: comment.author?.displayName || comment.author?.name || comment.author?.email || 'Anonymous',
         createdAt: new Date(comment.createdAt)
       })),
       images: ticket.imageUrl ? [{

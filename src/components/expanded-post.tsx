@@ -106,12 +106,17 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
     const loadUserDisplayName = async () => {
       if (user?.email) {
         try {
+          console.log('ExpandedPost: Loading display name for user:', user.email)
           const result = await userProfileApi.getDisplayName()
+          console.log('ExpandedPost: Display name API response:', result)
           if (result.data && !result.error) {
             setUserDisplayName(result.data.displayName)
+            console.log('ExpandedPost: Set user display name to:', result.data.displayName)
+          } else {
+            console.error('ExpandedPost: Display name API error:', result.error)
           }
         } catch (error) {
-          console.error('Error loading user display name:', error)
+          console.error('ExpandedPost: Error loading user display name:', error)
         }
       }
     }

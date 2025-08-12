@@ -41,12 +41,17 @@ export function AuthButton() {
 
   const loadDisplayName = async () => {
     try {
+      console.log('AuthButton: Loading display name for user:', user?.email)
       const result = await userProfileApi.getDisplayName()
+      console.log('AuthButton: Display name API response:', result)
       if (result.data && !result.error) {
         setDisplayName(result.data.displayName || "")
+        console.log('AuthButton: Set display name to:', result.data.displayName)
+      } else {
+        console.error('AuthButton: Display name API error:', result.error)
       }
     } catch (error) {
-      console.error('Error loading display name:', error)
+      console.error('AuthButton: Error loading display name:', error)
     }
   }
 
@@ -65,16 +70,21 @@ export function AuthButton() {
     setNameError("")
 
     try {
+      console.log('AuthButton: Updating display name to:', tempDisplayName.trim())
       const result = await userProfileApi.updateDisplayName(tempDisplayName.trim())
+      console.log('AuthButton: Update display name API response:', result)
       if (result.data && !result.error) {
         setDisplayName(result.data.displayName)
         setIsEditingName(false)
         setTempDisplayName("")
+        console.log('AuthButton: Successfully updated display name to:', result.data.displayName)
       } else {
         setNameError(result.error || "Failed to update display name")
+        console.error('AuthButton: Update display name API error:', result.error)
       }
     } catch (error) {
       setNameError("Failed to update display name")
+      console.error('AuthButton: Exception updating display name:', error)
     } finally {
       setIsLoadingName(false)
     }

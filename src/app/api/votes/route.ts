@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { ticketId } = body
     
+    // Validation
     if (!ticketId) {
       return NextResponse.json(
         { error: 'Ticket ID is required' },
@@ -38,7 +39,8 @@ export async function POST(request: NextRequest) {
         data: {
           email: user.email,
           name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          role: 'user'
+          role: 'user',
+          displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
         }
       })
     }
