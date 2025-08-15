@@ -86,6 +86,21 @@ export async function POST(request: NextRequest) {
       .from(STORAGE_BUCKET)
       .getPublicUrl(filename)
     
+    // Save logo info to database
+    const { error: dbError } = await supabase
+      .from('Settings')
+      .upsert({ 
+        id: 1, 
+        logoUrl: publicUrl,
+        logoRedirectUrl: redirectUrl || null
+      })
+      .eq('id', 1)
+
+    if (dbError) {
+      console.error('Error saving logo to database:', dbError)
+      // Still return success since file was uploaded, but log the error
+    }
+    
     // Return logo data
     return NextResponse.json({
       success: true,

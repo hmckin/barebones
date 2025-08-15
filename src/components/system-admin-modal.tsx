@@ -36,6 +36,8 @@ const ProgressBadge = ({ status }: { status: string }) => {
 
 export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
   const { themeColors, updateThemeColors, adminTickets, logo, updateLogo, systemAdmins, addSystemAdmin, removeSystemAdmin, loadAdminTickets, updateAdminTickets } = useApp()
+  
+
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('general')
   const [newAdminEmail, setNewAdminEmail] = useState('')
@@ -50,6 +52,8 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
   const [removeAdminConfirmId, setRemoveAdminConfirmId] = useState<string | null>(null)
   const [updatingVisibilityId, setUpdatingVisibilityId] = useState<string | null>(null)
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null)
+  const [hasInitialized, setHasInitialized] = useState(false)
+  const loadingRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Update logoRedirectUrl when logo changes
@@ -64,12 +68,31 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
     }
   }, [isOpen, user?.email])
 
-  // Load tickets when modal opens
+  // Load all data once when modal opens
   React.useEffect(() => {
-    if (isOpen) {
-      handleLoadTickets()
-      handleLoadThemeColors()
-    } else {
+    if (isOpen && !hasInitialized && !loadingRef.current) {
+      loadingRef.current = true
+      
+      // Only load theme colors if they're not already set
+      const promises = [
+        handleLoadTickets(),
+        handleLoadLogo()
+      ]
+      
+      // Only load theme colors if they're not already loaded
+      if (!themeColors.primary || themeColors.primary === '#3b82f6') {
+        promises.push(handleLoadThemeColors())
+      }
+      
+      // Use Promise.all to load all data concurrently
+      Promise.all(promises).finally(() => {
+        setHasInitialized(true)
+        loadingRef.current = false
+      })
+    } else if (!isOpen) {
+      // Reset initialization flag when modal closes
+      setHasInitialized(false)
+      loadingRef.current = false
       // Clear confirmation states when modal closes
       setDeleteConfirmId(null)
       setRemoveAdminConfirmId(null)
@@ -77,14 +100,21 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
       setDeletingTicketId(null)
       setSaveMessage(null)
     }
-  }, [isOpen])
+    
+    // Cleanup function to handle component unmounting
+    return () => {
+      if (!isOpen) {
+        loadingRef.current = false
+      }
+    }
+  }, [isOpen, themeColors.primary]) // Added themeColors.primary dependency to check if we need to load
 
-  // Load tickets when switching to requests tab
+  // Load tickets when switching to requests tab (only if not already loaded)
   React.useEffect(() => {
-    if (isOpen && activeTab === 'requests') {
+    if (isOpen && activeTab === 'requests' && hasInitialized && adminTickets.length === 0) {
       handleLoadTickets()
     }
-  }, [isOpen, activeTab])
+  }, [isOpen, activeTab, hasInitialized, adminTickets.length])
 
   // Filter suggestions based on search query
   const filteredSuggestions = useMemo(() => {
@@ -136,10 +166,14 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
                     throw new Error(logoResult.error)
                   }
                   
-                  updateLogo({
-                    ...logo,
-                    redirectUrl: logoRedirectUrl || undefined
-                  })
+                  // Reload logo from API to get updated data
+                  const logoResponse = await fetch('/api/logo')
+                  if (logoResponse.ok) {
+                    const result = await logoResponse.json()
+                    if (result.data) {
+                      updateLogo(result.data)
+                    }
+                  }
                 } catch (error) {
                   console.error('Error saving logo settings:', error)
                   throw error
@@ -196,7 +230,7 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
     }
   }
 
-  const handleLoadTickets = async () => {
+  const handleLoadTickets = React.useCallback(async () => {
     setIsLoadingTickets(true)
     try {
       await loadAdminTickets()
@@ -205,7 +239,7 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
     } finally {
       setIsLoadingTickets(false)
     }
-  }
+  }, [loadAdminTickets])
 
   const handleDeleteRequest = async (requestId: string) => {
     try {
@@ -374,12 +408,7 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
 
   const handleLogoRedirectUrlChange = (url: string) => {
     setLogoRedirectUrl(url)
-    if (logo) {
-      updateLogo({
-        ...logo,
-        redirectUrl: url || undefined
-      })
-    }
+    // Don't update logo state immediately - wait for save
   }
   
   const handleRemoveLogo = () => {
@@ -429,17 +458,33 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
     }
   }
 
-  const handleLoadThemeColors = async () => {
+  const handleLoadThemeColors = React.useCallback(async () => {
     try {
       const result = await themeApi.getThemeColor()
-      if (result.data && !result.error) {
+      if (result.data && !result.error && result.data.primary) {
         updateThemeColors({ primary: result.data.primary })
       }
+      // If no data or error, keep current theme color (don't update with undefined)
     } catch (error) {
       console.error('Error loading theme color:', error)
       // Keep current theme color if loading fails
     }
-  }
+  }, [updateThemeColors])
+
+  const handleLoadLogo = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/logo')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.data) {
+          updateLogo(result.data)
+          setLogoRedirectUrl(result.data.redirectUrl || '')
+        }
+      }
+    } catch (error) {
+      console.error('Error loading logo:', error)
+    }
+  }, [updateLogo])
 
   if (!isOpen) return null
 

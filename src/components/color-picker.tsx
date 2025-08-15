@@ -7,11 +7,14 @@ import { Palette } from 'lucide-react'
 
 interface ColorPickerProps {
   label: string
-  value: string
+  value?: string
   onChange: (color: string) => void
 }
 
 export function ColorPicker({ label, value, onChange }: ColorPickerProps) {
+  // Ensure value is always a valid string to prevent controlled/uncontrolled input warnings
+  const safeValue = value || '#3b82f6'
+  
   return (
     <div className="flex items-center space-x-2">
       <div className="flex items-center space-x-2">
@@ -24,11 +27,11 @@ export function ColorPicker({ label, value, onChange }: ColorPickerProps) {
         <Input
           id={`color-${label.toLowerCase()}`}
           type="color"
-          value={value}
+          value={safeValue}
           onChange={(e) => onChange(e.target.value)}
           className="h-6 w-8 p-0 border rounded cursor-pointer"
         />
-        <span className="text-xs text-muted-foreground font-mono">{value}</span>
+        <span className="text-xs text-muted-foreground font-mono">{safeValue}</span>
       </div>
     </div>
   )

@@ -80,27 +80,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       
       loadThemeColor()
 
+      // Load logo from public API
+      const loadLogo = async () => {
+        try {
+          const response = await fetch('/api/logo')
+          if (response.ok) {
+            const result = await response.json()
+            if (result.data) {
+              setLogo(result.data)
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load logo from API:', error)
+        }
+      }
+      
+      loadLogo()
+
       const savedUpvotes = localStorage.getItem('userUpvotes')
       if (savedUpvotes) {
         try {
           setUserUpvotes(JSON.parse(savedUpvotes))
         } catch (error) {
           console.error('Failed to parse saved user upvotes:', error)
-        }
-      }
-
-      const savedLogo = localStorage.getItem('logo')
-      if (savedLogo) {
-        try {
-          const parsedLogo = JSON.parse(savedLogo)
-          if (parsedLogo?.url === 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiB2aWV3Qm94PSIwIDAgMjI1IDc1IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMjI1IiBoZWlnaHQ9Ijc1IiBmaWxsPSIjMDAwIi8+Cjwvc3ZnPgo=') {
-            localStorage.removeItem('logo')
-            setLogo(null)
-          } else {
-            setLogo(parsedLogo)
-          }
-        } catch (error) {
-          console.error('Failed to parse saved logo:', error)
         }
       }
     }
@@ -398,9 +400,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateLogo = (newLogo: Logo) => {
     setLogo(newLogo)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('logo', JSON.stringify(newLogo))
-    }
+    // Logo is now managed by the database, no need to save to localStorage
   }
 
   const selectPost = (post: Suggestion | null, fromTab?: string) => {
