@@ -22,26 +22,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: System admin access required' }, { status: 403 })
     }
 
-    const { primary, secondary } = await request.json()
+    const { primary } = await request.json()
 
-    if (!primary || !secondary) {
-      return NextResponse.json({ error: 'Primary and secondary colors are required' }, { status: 400 })
+    if (!primary) {
+      return NextResponse.json({ error: 'Primary color is required' }, { status: 400 })
     }
 
     // Validate color format (basic hex validation)
     const hexColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
-    if (!hexColorRegex.test(primary) || !hexColorRegex.test(secondary)) {
+    if (!hexColorRegex.test(primary)) {
       return NextResponse.json({ error: 'Invalid color format. Please use hex colors (e.g., #FF0000)' }, { status: 400 })
     }
 
-    // Save theme colors to database (you can create a theme_settings table)
-    // For now, we'll just return success
-    // In a real implementation, you'd save this to your database
+    // Save primary color to database
+    const { error: updateError } = await supabase
+      .from('Settings')
+      .upsert({ id: 1, primaryColor: primary })
+      .eq('id', 1)
+
+    if (updateError) {
+      console.error('Error saving theme color to database:', updateError)
+      return NextResponse.json({ error: 'Failed to save theme color' }, { status: 500 })
+    }
     
     return NextResponse.json({
       success: true,
-      message: 'Theme colors saved successfully',
-      data: { primary, secondary }
+      message: 'Theme color saved successfully',
+      data: { primary }
     })
 
   } catch (error) {
@@ -71,14 +78,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: System admin access required' }, { status: 403 })
     }
 
-    // Get current theme colors from database
-    // For now, return default colors
-    // In a real implementation, you'd fetch this from your database
-    
+    // Get current theme color from database
+    const { data: settings, error } = await supabase
+      .from('Settings')
+      .select('primaryColor')
+      .eq('id', 1)
+      .single()
+
+    if (error) {
+      console.error('Error fetching theme color:', error)
+      // Return default color if database error
+      return NextResponse.json({
+        data: {
+          primary: '#3B82F6'
+        }
+      })
+    }
+
     return NextResponse.json({
       data: {
-        primary: '#3B82F6',
-        secondary: '#6B7280'
+        primary: settings?.primaryColor || '#3B82F6'
       }
     })
 

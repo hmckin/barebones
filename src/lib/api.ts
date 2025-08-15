@@ -211,17 +211,22 @@ export const votesApi = {
 
 // Theme API
 export const themeApi = {
-  // Save theme colors
-  async saveThemeColors(colors: { primary: string; secondary: string }): Promise<ApiResponse<{ success: boolean; message: string; data: { primary: string; secondary: string } }>> {
-    return apiCall<{ success: boolean; message: string; data: { primary: string; secondary: string } }>('/admin/theme', {
+  // Save theme color (admin only)
+  async saveThemeColor(color: { primary: string }): Promise<ApiResponse<{ success: boolean; message: string; data: { primary: string } }>> {
+    return apiCall<{ success: boolean; message: string; data: { primary: string } }>('/admin/theme', {
       method: 'POST',
-      body: JSON.stringify(colors),
+      body: JSON.stringify(color),
     })
   },
 
-  // Get theme colors
-  async getThemeColors(): Promise<ApiResponse<{ primary: string; secondary: string }>> {
-    return apiCall<{ primary: string; secondary: string }>('/admin/theme')
+  // Get theme color (admin only)
+  async getThemeColor(): Promise<ApiResponse<{ primary: string }>> {
+    return apiCall<{ primary: string }>('/admin/theme')
+  },
+
+  // Get public theme color (no auth required)
+  async getPublicThemeColor(): Promise<ApiResponse<{ primary: string }>> {
+    return apiCall<{ primary: string }>('/theme')
   }
 }
 

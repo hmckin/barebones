@@ -119,8 +119,8 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
         case 'general':
           // Save theme colors and logo settings
           try {
-            // Save theme colors to backend
-            const themeResult = await themeApi.saveThemeColors(themeColors)
+            // Save theme color to backend
+            const themeResult = await themeApi.saveThemeColor({ primary: themeColors.primary })
             if (themeResult.error) {
               throw new Error(themeResult.error)
             }
@@ -431,13 +431,13 @@ export function SystemAdminModal({ isOpen, onClose }: SystemAdminModalProps) {
 
   const handleLoadThemeColors = async () => {
     try {
-      const result = await themeApi.getThemeColors()
+      const result = await themeApi.getThemeColor()
       if (result.data && !result.error) {
-        updateThemeColors(result.data)
+        updateThemeColors({ primary: result.data.primary })
       }
     } catch (error) {
-      console.error('Error loading theme colors:', error)
-      // Keep current theme colors if loading fails
+      console.error('Error loading theme color:', error)
+      // Keep current theme color if loading fails
     }
   }
 

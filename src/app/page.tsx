@@ -23,12 +23,11 @@ export default function Home() {
     setMounted(true)
   }, [])
 
-  // Apply dynamic theme colors
+  // Apply dynamic theme color
   useEffect(() => {
     if (mounted) {
       const root = document.documentElement
       root.style.setProperty('--custom-primary', themeColors.primary)
-      root.style.setProperty('--custom-secondary', themeColors.secondary)
     }
   }, [themeColors, mounted])
 

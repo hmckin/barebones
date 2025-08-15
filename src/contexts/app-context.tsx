@@ -42,8 +42,7 @@ interface AdminUser {
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
 const defaultThemeColors: ThemeColors = {
-  primary: '#3b82f6',
-  secondary: '#8b5cf6'
+  primary: '#3b82f6'
 }
 
 const defaultUserUpvotes: UserUpvotes = {
@@ -61,17 +60,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true)
   const [logo, setLogo] = useState<Logo | null>(null)
 
-  // Load theme colors and user upvotes from localStorage on mount
+  // Load theme color from public API and user upvotes from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedColors = localStorage.getItem('themeColors')
-      if (savedColors) {
+      // Load theme color from public API
+      const loadThemeColor = async () => {
         try {
-          setThemeColors(JSON.parse(savedColors))
+          const response = await fetch('/api/theme')
+          if (response.ok) {
+            const result = await response.json()
+            if (result.data?.primary) {
+              setThemeColors({ primary: result.data.primary })
+            }
+          }
         } catch (error) {
-          console.error('Failed to parse saved theme colors:', error)
+          console.error('Failed to load theme color from API:', error)
         }
       }
+      
+      loadThemeColor()
 
       const savedUpvotes = localStorage.getItem('userUpvotes')
       if (savedUpvotes) {
@@ -386,9 +393,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateThemeColors = (colors: Partial<ThemeColors>) => {
     const newColors = { ...themeColors, ...colors }
     setThemeColors(newColors)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('themeColors', JSON.stringify(newColors))
-    }
+    // Theme colors are now managed by the database, no need to save to localStorage
   }
 
   const updateLogo = (newLogo: Logo) => {
