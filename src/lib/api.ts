@@ -238,6 +238,11 @@ export const logoSettingsApi = {
       method: 'PATCH',
       body: JSON.stringify(settings),
     })
+  },
+
+  // Get public logo (no auth required)
+  async getPublicLogo(): Promise<ApiResponse<{ url: string; redirectUrl?: string } | null>> {
+    return apiCall<{ url: string; redirectUrl?: string } | null>('/logo')
   }
 }
 

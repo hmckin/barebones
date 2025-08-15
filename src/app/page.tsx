@@ -38,7 +38,12 @@ export default function Home() {
     }
   }, [activeTab])
 
-  const handleLogoClick = () => {
+
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
     if (logo?.redirectUrl) {
       window.open(logo.redirectUrl, '_blank', 'noopener,noreferrer')
     }
@@ -60,12 +65,14 @@ export default function Home() {
                 {logo?.url ? (
                   <button
                     onClick={handleLogoClick}
-                    className={`flex items-center justify-center ${logo.redirectUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                    type="button"
+                    className={`flex items-center justify-center border-none bg-transparent p-0 ${logo.redirectUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                   >
                     <img 
                       src={logo.url} 
                       alt="Upload in settings" 
-                      className="max-w-full max-h-full object-contain"
+                      className="max-w-full max-h-full object-contain pointer-events-none"
+                      draggable="false"
                     />
                   </button>
                 ) : (

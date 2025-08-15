@@ -31,8 +31,22 @@ export async function PATCH(request: NextRequest) {
       }
     }
     
-    // In a real implementation, you'd save this to your database
-    // For now, we'll just return success
+    // Save logo redirect URL to database
+    const { error: dbError } = await supabase
+      .from('Settings')
+      .upsert({ 
+        id: 1, 
+        logoRedirectUrl: redirectUrl || null
+      })
+      .eq('id', 1)
+
+    if (dbError) {
+      console.error('Error saving logo settings to database:', dbError)
+      return NextResponse.json(
+        { error: 'Failed to save logo settings' },
+        { status: 500 }
+      )
+    }
     
     return NextResponse.json({
       success: true,
