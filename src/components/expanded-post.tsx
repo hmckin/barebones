@@ -13,6 +13,7 @@ import { useAuthGuard } from '@/hooks/use-auth-guard'
 import { Suggestion } from '@/types'
 import { getStatusColor } from '@/lib/utils'
 import { userProfileApi } from '@/lib/api'
+import { storageUtils } from '@/lib/storage-utils'
 
 const ProgressBadge = ({ status, isSystemAdmin, onStatusChange }: { 
   status: string
@@ -126,8 +127,19 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
     loadUserDisplayName()
   }, [user?.email])
 
+  // Restore comment draft on mount
+  useEffect(() => {
+    if (currentPost?.id && user?.email) {
+      const draftContent = storageUtils.getCommentDraft(currentPost.id)
+      if (draftContent) {
+        setCommentContent(draftContent)
+        // Clear the draft immediately after restoration
+        storageUtils.clearCommentDraft(currentPost.id)
+      }
+    }
+  }, [currentPost?.id, user?.email])
 
-  
+
   // Safety check to ensure the post exists and has required fields
   if (!currentPost) {
     return (
@@ -165,7 +177,10 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
         const authorName = userDisplayName || user?.name || user?.email || 'Anonymous'
         addComment(currentPost.id, commentContent.trim(), authorName)
         setCommentContent('')
-      }, 'add a comment')
+      }, 'add a comment', {
+        ticketId: currentPost.id,
+        commentContent: commentContent.trim()
+      })
     }
   }
 

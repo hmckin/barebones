@@ -16,6 +16,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false)
   const [sortBy, setSortBy] = useState('trending')
   const [activeTab, setActiveTab] = useState('requests')
+  const [logoLoading, setLogoLoading] = useState(true)
 
   const [createPostSearchQuery, setCreatePostSearchQuery] = useState('')
 
@@ -38,6 +39,12 @@ export default function Home() {
     }
   }, [activeTab])
 
+  // Set logo loading to false when logo is available
+  useEffect(() => {
+    if (logo !== null) {
+      setLogoLoading(false)
+    }
+  }, [logo])
 
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -60,24 +67,28 @@ export default function Home() {
           <div className="flex items-start justify-between">
             {/* Left side - Logo and Tabs */}
             <div className="flex items-start space-x-4">
-              <div className="flex items-center space-x-2 w-[150px] h-[75px] overflow-hidden">
-                {logo?.url ? (
-                  <button
-                    onClick={handleLogoClick}
-                    type="button"
-                    className={`flex items-center justify-center border-none bg-transparent p-0 ${logo.redirectUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                  >
-                    <img 
-                      src={logo.url} 
-                      alt="Upload in settings" 
-                      className="max-w-full max-h-full object-contain pointer-events-none"
-                      draggable="false"
-                    />
-                  </button>
+              <div className="flex items-center justify-center space-x-2 w-[150px] h-[75px] overflow-hidden">
+                {logoLoading ? (
+                  <div className="w-1/2 h-1/2 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-md"></div>
                 ) : (
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Upload logo in settings
-                  </span>
+                  logo?.url ? (
+                    <button
+                      onClick={handleLogoClick}
+                      type="button"
+                      className={`flex items-center justify-center border-none bg-transparent p-0 ${logo.redirectUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                    >
+                      <img 
+                        src={logo.url} 
+                        alt="Logo" 
+                        className="max-w-full max-h-full object-contain pointer-events-none"
+                        draggable="false"
+                      />
+                    </button>
+                  ) : (
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      Upload logo in settings
+                    </span>
+                  )
                 )}
               </div>
               

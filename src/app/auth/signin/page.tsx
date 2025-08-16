@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { storageUtils } from "@/lib/storage-utils"
 
 function SignInContent() {
   const [email, setEmail] = useState("")
@@ -22,6 +23,23 @@ function SignInContent() {
   // Redirect to intended action after successful authentication
   useEffect(() => {
     if (isAuthenticated && redirectUrl) {
+      // Check if there are any stored comment drafts and restore the selected post
+      const commentDraftKeys = storageUtils.getAllCommentDraftKeys()
+      if (commentDraftKeys.length > 0) {
+        // Find the first valid draft and restore the selected post state
+        for (const key of commentDraftKeys) {
+          const ticketId = key.replace('commentDraft:', '')
+          const draftContent = storageUtils.getCommentDraft(ticketId)
+          if (draftContent) {
+            // Store the ticket ID in localStorage so the app context can restore it
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('pendingCommentTicketId', ticketId)
+            }
+            break
+          }
+        }
+      }
+      
       router.push(redirectUrl)
     }
   }, [isAuthenticated, redirectUrl, router])

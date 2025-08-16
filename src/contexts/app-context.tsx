@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { Suggestion, ThemeColors, UserUpvotes, Comment, ImageAttachment, Logo } from '@/types'
 import { ticketsApi, votesApi, uploadsApi, adminTicketsApi } from '@/lib/api'
+import { storageUtils } from '@/lib/storage-utils'
 
 interface AppContextType {
   suggestions: Suggestion[]
@@ -63,6 +64,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Load theme color from public API and user upvotes from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Clean up expired comment drafts
+      storageUtils.cleanupExpiredDrafts()
+
       // Load theme color from public API
       const loadThemeColor = async () => {
         try {
@@ -105,6 +109,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           console.error('Failed to parse saved user upvotes:', error)
         }
       }
+
+      // Load selected post from localStorage
+      const savedSelectedPost = localStorage.getItem('selectedPost')
+      if (savedSelectedPost) {
+        try {
+          const parsedPost = JSON.parse(savedSelectedPost)
+          // Only restore if we have the full post data
+          if (parsedPost && parsedPost.id) {
+            setSelectedPost(parsedPost)
+          }
+        } catch (error) {
+          console.error('Failed to parse saved selected post:', error)
+        }
+      }
+
+      // Load previous tab from localStorage
+      const savedPreviousTab = localStorage.getItem('previousTab')
+      if (savedPreviousTab) {
+        setPreviousTab(savedPreviousTab)
+      }
     }
   }, [])
 
@@ -112,6 +136,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadTickets()
   }, [])
+
+  // Check for pending comment ticket ID after tickets are loaded
+  useEffect(() => {
+    if (suggestions.length > 0 && typeof window !== 'undefined') {
+      const pendingCommentTicketId = localStorage.getItem('pendingCommentTicketId')
+      if (pendingCommentTicketId) {
+        // Find the ticket and select it
+        const ticket = suggestions.find(s => s.id === pendingCommentTicketId)
+        if (ticket) {
+          selectPost(ticket)
+        }
+        // Clear the pending ticket ID
+        localStorage.removeItem('pendingCommentTicketId')
+      }
+    }
+  }, [suggestions])
 
   // Load system administrators from API
   useEffect(() => {
@@ -432,11 +472,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       
       setSelectedPost(fullPost)
+      // Save to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('selectedPost', JSON.stringify(fullPost))
+      }
     } else {
       setSelectedPost(null)
+      // Remove from localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('selectedPost')
+      }
     }
     if (fromTab) {
       setPreviousTab(fromTab)
+      // Save to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('previousTab', fromTab)
+      }
     }
   }
 
