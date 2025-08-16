@@ -13,6 +13,8 @@ export interface ImageAttachment {
   type: string
   uploadedAt: Date
   file?: File // Store the actual File object for uploads
+  tempFilename?: string // Temporary storage filename for unauthenticated users
+  expiresAt?: string // When the temporary URL expires
 }
 
 export interface Suggestion {

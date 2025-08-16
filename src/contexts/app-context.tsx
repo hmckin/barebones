@@ -138,13 +138,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (images && images.length > 0) {
         const imageAttachment = images[0]
         
-        if (imageAttachment.file) {
+        if (imageAttachment.tempFilename) {
+          // Move from temporary storage to permanent storage
+          const moveResult = await uploadsApi.moveTempToPermanent(
+            imageAttachment.tempFilename,
+            imageAttachment.name,
+            imageAttachment.type
+          )
+          if (moveResult.error) {
+            throw new Error(moveResult.error)
+          }
+          imageUrl = moveResult.data?.imageUrl
+        } else if (imageAttachment.file) {
+          // Direct upload for authenticated users
           const uploadResult = await uploadsApi.uploadImage(imageAttachment.file)
           if (uploadResult.error) {
             throw new Error(uploadResult.error)
           }
           imageUrl = uploadResult.data?.imageUrl
         } else {
+          // Fallback for existing URLs
           try {
             const imageFile = await fetch(imageAttachment.url).then(r => r.blob())
             const file = new File([imageFile], imageAttachment.name, { type: imageAttachment.type })

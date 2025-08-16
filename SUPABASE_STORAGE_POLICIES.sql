@@ -63,8 +63,14 @@ USING (
   AND (storage.foldername(name))[1] = 'logos'
 );
 
--- If you want to allow anonymous users to view images, uncomment this:
--- CREATE POLICY "Allow anonymous users to view images" ON storage.objects
--- FOR SELECT 
--- TO anon
--- USING (bucket_id = 'images'); 
+-- Allow ANYONE (including anonymous users) to upload to temp-images
+CREATE POLICY "Allow anyone to upload to temp-images" ON storage.objects
+FOR INSERT WITH CHECK (bucket_id = 'temp-images');
+
+-- Allow ANYONE to read from temp-images (needed for signed URLs to work)
+CREATE POLICY "Allow anyone to read from temp-images" ON storage.objects
+FOR SELECT USING (bucket_id = 'temp-images');
+
+-- Allow authenticated users to delete from temp-images (for cleanup)
+CREATE POLICY "Allow authenticated deletes from temp-images" ON storage.objects
+FOR DELETE USING (bucket_id = 'temp-images' AND auth.role() = 'authenticated');

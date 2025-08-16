@@ -4,10 +4,13 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const redirectUrl = requestUrl.searchParams.get('redirect')
 
   if (code) {
     // Create response to set cookies
-    const response = NextResponse.redirect(requestUrl.origin)
+    const response = redirectUrl 
+      ? NextResponse.redirect(new URL(redirectUrl, requestUrl.origin))
+      : NextResponse.redirect(requestUrl.origin)
     
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +33,7 @@ export async function GET(request: NextRequest) {
     
     if (error) {
       console.error('Error exchanging code for session:', error)
+      // Still redirect even if there's an error, as the user might be authenticated
     }
     
     return response

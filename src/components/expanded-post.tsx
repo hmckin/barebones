@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/contexts/app-context'
 import { useAuth } from '@/hooks/use-auth'
+import { useAuthGuard } from '@/hooks/use-auth-guard'
 import { Suggestion } from '@/types'
 import { getStatusColor } from '@/lib/utils'
 import { userProfileApi } from '@/lib/api'
@@ -95,6 +96,7 @@ interface ExpandedPostProps {
 export function ExpandedPost({ post }: ExpandedPostProps) {
   const { hasUserUpvoted, upvoteSuggestion, selectPost, suggestions, addComment, updateSuggestionStatus, checkIsSystemAdmin, previousTab } = useApp()
   const { user } = useAuth()
+  const { requireAuth } = useAuthGuard()
   const currentPost = suggestions.find(s => s.id === post.id) || post
   const [userDisplayName, setUserDisplayName] = useState<string | null>(null)
   const [commentContent, setCommentContent] = useState('')
@@ -123,6 +125,8 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
 
     loadUserDisplayName()
   }, [user?.email])
+
+
   
   // Safety check to ensure the post exists and has required fields
   if (!currentPost) {
@@ -156,10 +160,12 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault()
     if (commentContent.trim()) {
-      // Use user's display name if available, otherwise fall back to email or 'Anonymous'
-      const authorName = userDisplayName || user?.name || user?.email || 'Anonymous'
-      addComment(currentPost.id, commentContent.trim(), authorName)
-      setCommentContent('')
+      requireAuth(() => {
+        // Use user's display name if available, otherwise fall back to email or 'Anonymous'
+        const authorName = userDisplayName || user?.name || user?.email || 'Anonymous'
+        addComment(currentPost.id, commentContent.trim(), authorName)
+        setCommentContent('')
+      }, 'add a comment')
     }
   }
 
@@ -344,7 +350,7 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
               />
               <Button 
                 type="submit" 
-                className="bg-gray-800 hover:bg-gray-900 text-white flex-shrink-0"
+                className="bg-primary hover:bg-primary/90 text-white flex-shrink-0"
                 disabled={!commentContent.trim()}
               >
                 Comment

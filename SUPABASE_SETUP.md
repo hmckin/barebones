@@ -23,6 +23,10 @@
    - Create bucket named `images`
    - Set to **Public**
 
+   - Go to **Storage** in dashboard
+   - Create bucket named `temp-images`
+   - Set to **Public**
+
 5. **Add Storage Policy**
    - Run the SUPABASE_STORAGE_POLICIES.sql file in SQL editor
 

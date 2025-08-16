@@ -1,26 +1,37 @@
 "use client"
 
 import { useSupabaseAuth } from "@/contexts/supabase-auth-context"
-import { useState } from "react"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-
-
-export default function SignIn() {
+function SignInContent() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isEmailSent, setIsEmailSent] = useState(false)
-  const { signInWithEmail } = useSupabaseAuth()
+  const { signInWithEmail, isAuthenticated } = useSupabaseAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  const redirectUrl = searchParams.get('redirect')
+  const actionName = searchParams.get('action')
+
+  // Redirect to intended action after successful authentication
+  useEffect(() => {
+    if (isAuthenticated && redirectUrl) {
+      router.push(redirectUrl)
+    }
+  }, [isAuthenticated, redirectUrl, router])
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     
     try {
-      const { error } = await signInWithEmail(email)
+      const { error } = await signInWithEmail(email, redirectUrl || undefined)
       
       if (!error) {
         setIsEmailSent(true)
@@ -45,6 +56,11 @@ export default function SignIn() {
                 <CardDescription className="text-muted-foreground">
                   A sign in link has been sent to {email}
                 </CardDescription>
+                {actionName && (
+                  <CardDescription className="text-sm text-blue-600 dark:text-blue-400">
+                    After signing in, you&apos;ll be able to {actionName}
+                  </CardDescription>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -66,9 +82,14 @@ export default function SignIn() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-sm mx-auto px-4">
         <Card className="shadow-none bg-transparent">
-            <CardHeader className="text-center pb-1">
-              <CardTitle className="text-3xl font-semibold">Welcome</CardTitle>
-            </CardHeader>
+          <CardHeader className="text-center pb-1">
+            <CardTitle className="text-3xl font-semibold">Welcome</CardTitle>
+            {actionName && (
+              <CardDescription className="text-muted-foreground">
+                Sign in to {actionName}
+              </CardDescription>
+            )}
+          </CardHeader>
           <CardContent>
             <form onSubmit={handleEmailSignIn} className="space-y-4">
               <div className="space-y-2">
@@ -97,5 +118,23 @@ export default function SignIn() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-full max-w-sm mx-auto px-4">
+          <Card className="shadow-none bg-transparent">
+            <CardContent className="text-center py-8">
+              <div className="animate-pulse">Loading...</div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   )
 } 

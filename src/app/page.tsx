@@ -39,7 +39,6 @@ export default function Home() {
   }, [activeTab])
 
 
-
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()

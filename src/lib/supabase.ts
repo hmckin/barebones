@@ -14,5 +14,6 @@ export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 // Client component Supabase client (with auth)
 export const createClientSupabase = () => createBrowserClient(supabaseUrl, supabaseAnonKey)
 
-// Storage bucket name for images
-export const STORAGE_BUCKET = 'images' 
+// Storage bucket names
+export const STORAGE_BUCKET = 'images'
+export const TEMP_STORAGE_BUCKET = 'temp-images' 

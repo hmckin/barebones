@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Image as ImageIcon, X } from 'lucide-react'
 import { useApp } from '@/contexts/app-context'
+import { useAuthGuard } from '@/hooks/use-auth-guard'
 import { ImageAttachment } from '@/types'
 
 interface CreatePostProps {
@@ -16,6 +17,7 @@ interface CreatePostProps {
 
 export function CreatePost({ onSearchChange }: CreatePostProps) {
   const { addSuggestion, loading } = useApp()
+  const { requireAuth } = useAuthGuard()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [errors, setErrors] = useState<{ title?: string }>({})
@@ -23,6 +25,84 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Restore form data from localStorage if available (after authentication)
+  useEffect(() => {
+    const formDataKey = localStorage.getItem('auth_form_data_key')
+    if (formDataKey) {
+      try {
+        const storedData = localStorage.getItem(formDataKey)
+        if (storedData) {
+          const parsedData = JSON.parse(storedData)
+                  if (parsedData.title) setTitle(parsedData.title)
+        if (parsedData.description) setDescription(parsedData.description)
+        
+        // Check if stored images are still valid and clean up expired ones
+        if (parsedData.attachedImages) {
+          const validImages = parsedData.attachedImages.filter((img: any) => {
+            if (!img.expiresAt) return false
+            return new Date() < new Date(img.expiresAt)
+          })
+          
+          if (validImages.length !== parsedData.attachedImages.length) {
+            // Some images expired, show warning and clean up
+            const expiredCount = parsedData.attachedImages.length - validImages.length
+            alert(`${expiredCount} image(s) have expired and will need to be re-uploaded.`)
+            
+            // Clean up expired images from temp storage
+            const expiredImages = parsedData.attachedImages.filter((img: any) => {
+              if (!img.expiresAt) return true
+              return new Date() >= new Date(img.expiresAt)
+            })
+            
+            // Remove expired images from temp storage
+            const expiredFilenames = expiredImages
+              .map((img: any) => img.tempFilename)
+              .filter(Boolean)
+            
+            if (expiredFilenames.length > 0) {
+              // Clean up expired files asynchronously
+              (async () => {
+                try {
+                  const { uploadsApi } = await import('@/lib/api')
+                  
+                  // First clean up the specific expired files
+                  const cleanupResult = await uploadsApi.cleanupExpiredFiles(expiredFilenames)
+                  if (cleanupResult.error) {
+                    console.error('Failed to cleanup expired images:', cleanupResult.error)
+                  } else {
+                    console.log('Successfully cleaned up expired images:', cleanupResult.data?.message)
+                  }
+                  
+                  // Then trigger a full cleanup to catch any other orphaned files
+                  const fullCleanupResult = await uploadsApi.cleanupExpiredFiles([], true)
+                  if (fullCleanupResult.error) {
+                    console.error('Failed to run full cleanup:', fullCleanupResult.error)
+                  } else {
+                    console.log('Full cleanup completed:', fullCleanupResult.data?.message)
+                  }
+                } catch (error) {
+                  console.error('Failed to cleanup expired images:', error)
+                }
+              })()
+            }
+          }
+          
+          setAttachedImages(validImages)
+        }
+          
+          // Clear the stored data after restoring
+          localStorage.removeItem(formDataKey)
+          localStorage.removeItem('auth_form_data_key')
+        }
+      } catch (error) {
+        console.error('Failed to restore form data:', error)
+        // Clear invalid stored data
+        localStorage.removeItem(formDataKey)
+        localStorage.removeItem('auth_form_data_key')
+      }
+    }
+  }, [])
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value
@@ -46,38 +126,53 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
     }
   }
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
     if (!files) return
 
-    Array.from(files).forEach((file) => {
+    for (const file of Array.from(files)) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
         alert('Please select only image files')
-        return
+        continue
       }
 
       // Validate file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         alert('File size must be less than 5MB')
-        return
+        continue
       }
 
-      // Create object URL for preview
-      const url = URL.createObjectURL(file)
-      
-      const newImage: ImageAttachment = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        name: file.name,
-        url: url,
-        size: file.size,
-        type: file.type,
-        uploadedAt: new Date(),
-        file: file // Store the actual File object for uploads
-      }
+      try {
+        // Upload to temporary storage immediately
+        const { uploadsApi } = await import('@/lib/api')
+        const uploadResult = await uploadsApi.uploadTempImage(file)
+        
+        if (uploadResult.error) {
+          alert(`Failed to upload image: ${uploadResult.error}`)
+          continue
+        }
 
-      setAttachedImages(prev => [...prev, newImage])
-    })
+        if (uploadResult.data) {
+          const newImage: ImageAttachment = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            name: file.name,
+            url: uploadResult.data.signedUrl,
+            size: file.size,
+            type: file.type,
+            uploadedAt: new Date(),
+            file: file, // Keep file reference for final upload
+            tempFilename: uploadResult.data.tempFilename, // Store temp filename for later
+            expiresAt: uploadResult.data.expiresAt
+          }
+
+          setAttachedImages(prev => [...prev, newImage])
+        }
+      } catch (error) {
+        console.error('Failed to upload image:', error)
+        alert('Failed to upload image. Please try again.')
+      }
+    }
 
     // Reset file input
     if (fileInputRef.current) {
@@ -98,7 +193,7 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validation
+    // Validate form
     const newErrors: { title?: string } = {}
     if (!title.trim()) {
       newErrors.title = 'Title is required'
@@ -108,62 +203,70 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
       setErrors(newErrors)
       return
     }
-
-    setIsSubmitting(true)
-    try {
-      await addSuggestion({
-        title: title.trim(),
-        description: description.trim(),
-        upvotes: 0,
-        status: 'Queued',
-        hidden: false
-      }, attachedImages)
-
-      // Reset form
-      setTitle('')
-      setDescription('')
-      setErrors({})
-      
-      // Show success message
-      setShowSuccess(true)
-      
-      // Clear the search filter after a short delay so user can see their post
-      // This ensures they see their new post along with existing tickets
-      setTimeout(() => {
-        if (onSearchChange) {
-          onSearchChange('')
+    
+    // Use authentication guard for form submission
+    await requireAuth(async () => {
+      setIsSubmitting(true)
+      try {
+        await addSuggestion({
+          title: title.trim(),
+          description: description.trim(),
+          status: 'Queued',
+          upvotes: 0,
+          hidden: false
+        }, attachedImages)
+        
+        // Reset form
+        setTitle('')
+        setDescription('')
+        setAttachedImages([])
+        setErrors({})
+        setShowSuccess(true)
+        
+        // Clear stored form data after successful submission
+        const formDataKey = localStorage.getItem('auth_form_data_key')
+        if (formDataKey) {
+          localStorage.removeItem(formDataKey)
+          localStorage.removeItem('auth_form_data_key')
         }
-        setShowSuccess(false)
-      }, 3000) // 3 second delay - enough time to see success, then show full list
-      
-      // Clean up image URLs and reset attachments
-      attachedImages.forEach(img => URL.revokeObjectURL(img.url))
-      setAttachedImages([])
-    } catch (error) {
-      console.error('Failed to create post:', error)
-      
-      // Show user-friendly error message
-      let errorMessage = 'Failed to create post. Please try again.'
-      
-      if (error instanceof Error) {
-        if (error.message.includes('Storage bucket not configured')) {
-          errorMessage = 'Image upload service is not configured. Please contact support.'
-        } else if (error.message.includes('Unauthorized')) {
-          errorMessage = 'Please sign in to create posts with images.'
-        } else if (error.message.includes('policy violation')) {
-          errorMessage = 'Image upload failed due to security policy. Please try a different image.'
-        } else if (error.message.includes('File size')) {
-          errorMessage = 'Image is too large. Please use an image smaller than 5MB.'
-        } else {
-          errorMessage = error.message
+        
+        // Clear the search filter after a short delay so user can see their post
+        setTimeout(() => {
+          if (onSearchChange) {
+            onSearchChange('')
+          }
+          setShowSuccess(false)
+        }, 3000)
+        
+        // Clean up image URLs and reset attachments
+        attachedImages.forEach(img => URL.revokeObjectURL(img.url))
+        setAttachedImages([])
+      } catch (error) {
+        console.error('Failed to create post:', error)
+        
+        // Show user-friendly error message
+        let errorMessage = 'Failed to create post. Please try again.'
+        
+        if (error instanceof Error) {
+          if (error.message.includes('Storage bucket not configured')) {
+            errorMessage = 'Image upload service is not configured. Please contact support.'
+          } else if (error.message.includes('Unauthorized')) {
+            errorMessage = 'Please sign in to create posts with images.'
+          } else if (error.message.includes('policy violation')) {
+            errorMessage = 'Image upload failed due to security policy. Please try a different image.'
+          } else if (error.message.includes('File size')) {
+            errorMessage = 'Image is too large. Please use an image smaller than 5MB.'
+          } else {
+            errorMessage = error.message
+          }
         }
+        
+        // You might want to show this error message to the user via a toast or alert
+        alert(errorMessage)
+      } finally {
+        setIsSubmitting(false)
       }
-      
-      // You might want to show this error message to the user via a toast or alert
-      alert(errorMessage)
-    } finally {
-      setIsSubmitting(false)
-    }
+    }, 'create a post', { title, description, attachedImages })
   }
 
   const formatFileSize = (bytes: number) => {

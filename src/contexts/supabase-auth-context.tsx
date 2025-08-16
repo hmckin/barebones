@@ -11,7 +11,7 @@ interface SupabaseAuthContextType {
   signIn: (email: string, password?: string) => Promise<{ error?: AuthError }>
   signUp: (email: string, password: string) => Promise<{ error?: AuthError }>
   signOut: () => Promise<void>
-  signInWithEmail: (email: string) => Promise<{ error?: AuthError }>
+  signInWithEmail: (email: string, redirectUrl?: string) => Promise<{ error?: AuthError }>
   isAuthenticated: boolean
 }
 
@@ -88,12 +88,16 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     }
   }
 
-  const signInWithEmail = async (email: string) => {
+  const signInWithEmail = async (email: string, redirectUrl?: string) => {
     try {
+      const callbackUrl = redirectUrl 
+        ? `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectUrl)}`
+        : `${window.location.origin}/auth/callback`
+      
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: callbackUrl,
         },
       })
       return { error: error || undefined }

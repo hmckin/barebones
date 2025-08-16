@@ -248,7 +248,7 @@ export const logoSettingsApi = {
 
 // Uploads API
 export const uploadsApi = {
-  // Upload an image file
+  // Upload an image file (requires authentication)
   async uploadImage(file: File): Promise<ApiResponse<UploadResponse>> {
     const formData = new FormData()
     formData.append('file', file)
@@ -269,6 +269,95 @@ export const uploadsApi = {
     } catch (error) {
       console.error('Upload failed:', error)
       return { error: error instanceof Error ? error.message : 'Upload failed' }
+    }
+  },
+
+  // Upload an image file to temporary storage (no auth required)
+  async uploadTempImage(file: File): Promise<ApiResponse<{
+    tempFilename: string
+    signedUrl: string
+    size: number
+    type: string
+    expiresAt: string
+  }>> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await fetch(`${API_BASE}/uploads/temp`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return { data }
+    } catch (error) {
+      console.error('Temp upload failed:', error)
+      return { error: error instanceof Error ? error.message : 'Temp upload failed' }
+    }
+  },
+
+  // Move a file from temporary storage to permanent storage
+  async moveTempToPermanent(tempFilename: string, originalName: string, originalType: string): Promise<ApiResponse<{
+    imageUrl: string
+    filename: string
+    publicUrl: string
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE}/uploads/move`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tempFilename,
+          originalName,
+          originalType,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return { data }
+    } catch (error) {
+      console.error('Move file failed:', error)
+      return { error: error instanceof Error ? error.message : 'Move file failed' }
+    }
+  },
+
+  // Clean up expired temporary files
+  async cleanupExpiredFiles(tempFilenames: string[], runFullCleanup: boolean = false): Promise<ApiResponse<{
+    message: string
+    removedFiles: string[]
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE}/uploads/cleanup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tempFilenames, runFullCleanup }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return { data }
+    } catch (error) {
+      console.error('Cleanup failed:', error)
+      return { error: error instanceof Error ? error.message : 'Cleanup failed' }
     }
   }
 }

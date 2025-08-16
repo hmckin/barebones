@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/contexts/app-context'
 import { useTickets } from '@/hooks/use-tickets'
+import { useAuthGuard } from '@/hooks/use-auth-guard'
 import { getStatusColor } from '@/lib/utils'
 
 const ProgressBadge = ({ status }: { status: string }) => {
@@ -34,6 +35,7 @@ interface RequestsViewProps {
 export function RequestsView({ sortBy, onSortChange, createPostFilter = '' }: RequestsViewProps) {
   const { upvoteSuggestion, hasUserUpvoted, selectPost } = useApp()
   const { suggestions, loading, updateSorting, updateSearch, searchInput } = useTickets()
+  const { requireAuth } = useAuthGuard()
   const [searchBarInput, setSearchBarInput] = useState('')
 
 
@@ -46,11 +48,13 @@ export function RequestsView({ sortBy, onSortChange, createPostFilter = '' }: Re
   const handleUpvote = async (postId: string, e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     
-    try {
-      await upvoteSuggestion(postId)
-    } finally {
-      // No specific cleanup needed for rapid clicking
-    }
+    requireAuth(async () => {
+      try {
+        await upvoteSuggestion(postId)
+      } finally {
+        // No specific cleanup needed for rapid clicking
+      }
+    }, 'upvote this post')
   }
 
   // Apply create post filtering locally without affecting the search bar
