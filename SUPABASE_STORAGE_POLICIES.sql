@@ -180,3 +180,33 @@ CREATE POLICY "System admins can view all votes" ON "Vote"
       AND "User".role = 'system_admin'
     )
   );
+
+-- ... existing code ...
+
+-- ============================================================================
+-- ADDITIONAL RLS POLICIES FOR MISSING TABLES
+-- ============================================================================
+
+-- Prisma Migrations Table Policies
+-- This is a system table managed by Prisma - restrict all access
+ALTER TABLE "_prisma_migrations" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Restrict prisma migrations access" ON "_prisma_migrations"
+  FOR ALL USING (false);
+
+-- Settings Table Policies (App Configuration)
+-- Only system admins should manage app settings
+ALTER TABLE "Settings" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "System admins can manage settings" ON "Settings"
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM "User" 
+      WHERE "User".id = auth.uid()::text 
+      AND "User".role = 'system_admin'
+    )
+  );
+
+-- Public read access to settings (for app configuration)
+CREATE POLICY "Public can view settings" ON "Settings"
+  FOR SELECT USING (true);

@@ -529,6 +529,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const loadUserUpvotes = async () => {
+    try {
+      const response = await fetch('/api/votes')
+      if (response.ok) {
+        const result = await response.json()
+        setUserUpvotes({ upvotedPosts: result.upvotedPosts || [] })
+        localStorage.setItem('userUpvotes', JSON.stringify({ upvotedPosts: result.upvotedPosts || [] }))
+      }
+    } catch (error) {
+      console.error('Failed to load user upvotes:', error)
+    }
+  }
+
+  // Check auth and load user upvotes
+  useEffect(() => {
+    const checkAuthAndLoadUpvotes = async () => {
+      try {
+        const response = await fetch('/api/user/display-name')
+        if (response.ok) {
+          await loadUserUpvotes()
+        } else {
+          // User not authenticated, clear upvotes
+          setUserUpvotes({ upvotedPosts: [] })
+          localStorage.removeItem('userUpvotes')
+        }
+      } catch (error) {
+        // User not authenticated
+        setUserUpvotes({ upvotedPosts: [] })
+        localStorage.removeItem('userUpvotes')
+      }
+    }
+    
+    checkAuthAndLoadUpvotes()
+  }, [])
+
   const loadAdminTickets = useCallback(async () => {
     try {
       setLoading(true)

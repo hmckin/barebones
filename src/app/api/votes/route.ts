@@ -125,3 +125,26 @@ export async function POST(request: NextRequest) {
     )
   }
 } 
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createServerSupabase(request)
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user?.email) {
+      return NextResponse.json({ upvotedPosts: [] })
+    }
+    
+    const dbUser = await prisma.user.findUnique({ where: { email: user.email } })
+    if (!dbUser) return NextResponse.json({ upvotedPosts: [] })
+    
+    const votes = await prisma.vote.findMany({
+      where: { userId: dbUser.id },
+      select: { ticketId: true }
+    })
+    
+    return NextResponse.json({ upvotedPosts: votes.map(v => v.ticketId) })
+  } catch (error) {
+    return NextResponse.json({ upvotedPosts: [] })
+  }
+} 
