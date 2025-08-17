@@ -172,7 +172,7 @@ export function RequestsView({ sortBy, onSortChange, createPostFilter = '' }: Re
                             onClick={(e) => handleUpvote(suggestion.id, e)}
                             className={`flex flex-col items-center justify-center w-12 h-12 rounded-full transition-colors ${
                               isUpvoted
-                                ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                                ? 'upvote-text upvote-bg dark:upvote-bg-dark'
                                 : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
                             }`}
                             title={
@@ -181,12 +181,12 @@ export function RequestsView({ sortBy, onSortChange, createPostFilter = '' }: Re
                                 : 'Click to upvote this post'
                             }
                           >
-                            <ChevronUp className={`w-4 h-4 ${isUpvoted ? 'text-blue-600 dark:text-blue-400' : ''}`} />
-                            <span className={`text-xs font-medium leading-none ${
-                              isUpvoted
-                                ? 'text-blue-600 dark:text-blue-400'
-                                : 'text-gray-700 dark:text-gray-300'
-                            }`}>
+                            <ChevronUp className={`w-4 h-4 ${isUpvoted ? 'upvote-text' : ''}`} />
+                                                          <span className={`text-xs font-medium leading-none ${
+                                isUpvoted
+                                  ? 'upvote-text'
+                                  : 'text-gray-700 dark:text-gray-300'
+                                }`}>
                               {suggestion.upvotes}
                             </span>
                           </button>

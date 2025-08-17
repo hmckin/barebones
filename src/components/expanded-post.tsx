@@ -248,7 +248,7 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
                   onClick={() => upvoteSuggestion(currentPost.id)}
                   className={`flex flex-col items-center justify-center w-16 h-16 rounded-full transition-colors ${
                     isUpvoted
-                      ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                      ? 'upvote-text upvote-bg dark:upvote-bg-dark'
                       : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
                   }`}
                   title={
@@ -257,12 +257,12 @@ export function ExpandedPost({ post }: ExpandedPostProps) {
                       : 'Click to upvote this post'
                   }
                 >
-                  <ChevronUp className={`w-6 h-6 ${isUpvoted ? 'text-blue-600 dark:text-blue-400' : ''}`} />
-                  <span className={`text-lg font-bold ${
+                  <ChevronUp className={`w-6 h-6 ${isUpvoted ? 'upvote-text' : ''}`} />
+                                    <span className={`text-lg font-bold ${
                     isUpvoted
-                      ? 'text-blue-600 dark:text-blue-400'
+                      ? 'upvote-text'
                       : 'text-gray-700 dark:text-gray-300'
-                  }`}>
+                    }`}>
                     {currentPost.upvotes}
                   </span>
                 </button>

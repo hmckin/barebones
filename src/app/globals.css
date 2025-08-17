@@ -88,4 +88,24 @@
 /* Custom theme color variables */
 :root {
   --custom-primary: #3b82f6;
+  --upvote-text: var(--custom-primary);
+  --upvote-bg: #eff6ff;
+  --upvote-bg-dark: rgba(59, 130, 246, 0.1);
+}
+
+/* Upvote button color utilities */
+.upvote-text {
+  color: var(--upvote-text);
+}
+
+.upvote-bg {
+  background-color: var(--upvote-bg);
+}
+
+.upvote-bg-dark {
+  background-color: var(--upvote-bg-dark);
+}
+
+.dark .upvote-bg {
+  background-color: var(--upvote-bg-dark);
 }

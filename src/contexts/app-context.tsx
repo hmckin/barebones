@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { Suggestion, ThemeColors, UserUpvotes, Comment, ImageAttachment, Logo } from '@/types'
 import { ticketsApi, votesApi, uploadsApi, adminTicketsApi } from '@/lib/api'
 import { storageUtils } from '@/lib/storage-utils'
+import { updateUpvoteColors } from '@/lib/utils'
 
 interface AppContextType {
   suggestions: Suggestion[]
@@ -75,6 +76,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const result = await response.json()
             if (result.data?.primary) {
               setThemeColors({ primary: result.data.primary })
+              updateUpvoteColors(result.data.primary)
             }
           }
         } catch (error) {
@@ -449,6 +451,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const newColors = { ...themeColors, ...colors }
     setThemeColors(newColors)
     // Theme colors are now managed by the database, no need to save to localStorage
+    updateUpvoteColors(newColors.primary || themeColors.primary)
   }
 
   const updateLogo = (newLogo: Logo) => {
