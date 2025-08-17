@@ -198,14 +198,18 @@ CREATE POLICY "Restrict prisma migrations access" ON "_prisma_migrations"
 -- Only system admins should manage app settings
 ALTER TABLE "Settings" ENABLE ROW LEVEL SECURITY;
 
+-- Create a new, simpler policy with proper clauses
 CREATE POLICY "System admins can manage settings" ON "Settings"
   FOR ALL USING (
     EXISTS (
       SELECT 1 FROM system_admins 
-      WHERE system_admins.email = (
-        SELECT email FROM "User" 
-        WHERE "User".id = auth.uid()::text
-      )
+      WHERE system_admins.email = auth.jwt() ->> 'email'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM system_admins 
+      WHERE system_admins.email = auth.jwt() ->> 'email'
     )
   );
 
