@@ -201,9 +201,11 @@ ALTER TABLE "Settings" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "System admins can manage settings" ON "Settings"
   FOR ALL USING (
     EXISTS (
-      SELECT 1 FROM "User" 
-      WHERE "User".id = auth.uid()::text 
-      AND "User".role = 'system_admin'
+      SELECT 1 FROM system_admins 
+      WHERE system_admins.email = (
+        SELECT email FROM "User" 
+        WHERE "User".id = auth.uid()::text
+      )
     )
   );
 
