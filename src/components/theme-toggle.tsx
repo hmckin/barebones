@@ -48,15 +48,15 @@ export function ThemeToggle() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           {/* Theme options */}
-          <DropdownMenuItem onClick={() => setTheme("light")}>
+          <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
             <Sun className="mr-2 h-4 w-4" />
             Light
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setTheme("dark")}>
+          <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer">
             <Moon className="mr-2 h-4 w-4" />
             Dark
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setTheme("system")}>
+          <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer">
             <Monitor className="mr-2 h-4 w-4" />
             System
           </DropdownMenuItem>
@@ -65,7 +65,7 @@ export function ThemeToggle() {
           {currentUserIsSystemAdmin && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setShowSystemAdminModal(true)}>
+              <DropdownMenuItem onClick={() => setShowSystemAdminModal(true)} className="cursor-pointer">
                 <Shield className="mr-2 h-4 w-4" />
                 System Administration
               </DropdownMenuItem>
@@ -80,7 +80,7 @@ export function ThemeToggle() {
             </div>
           
           {/* Sign out option */}
-          <DropdownMenuItem onClick={signOut}>
+          <DropdownMenuItem onClick={signOut} className="cursor-pointer">
             <User className="mr-2 h-4 w-4" />
             Sign Out
           </DropdownMenuItem>
