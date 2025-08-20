@@ -93,7 +93,7 @@
   --upvote-bg-dark: rgba(59, 130, 246, 0.1);
 }
 
-/* Upvote button color utilities */
+/* Upvote button and text color utilities */
 .upvote-text {
   color: var(--upvote-text);
 }
