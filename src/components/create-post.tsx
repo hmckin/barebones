@@ -39,7 +39,7 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
         
         // Check if stored images are still valid and clean up expired ones
         if (parsedData.attachedImages) {
-          const validImages = parsedData.attachedImages.filter((img: any) => {
+          const validImages = parsedData.attachedImages.filter((img: ImageAttachment) => {
             if (!img.expiresAt) return false
             return new Date() < new Date(img.expiresAt)
           })
@@ -50,14 +50,14 @@ export function CreatePost({ onSearchChange }: CreatePostProps) {
             alert(`${expiredCount} image(s) have expired and will need to be re-uploaded.`)
             
             // Clean up expired images from temp storage
-            const expiredImages = parsedData.attachedImages.filter((img: any) => {
+            const expiredImages = parsedData.attachedImages.filter((img: ImageAttachment) => {
               if (!img.expiresAt) return true
               return new Date() >= new Date(img.expiresAt)
             })
             
             // Remove expired images from temp storage
             const expiredFilenames = expiredImages
-              .map((img: any) => img.tempFilename)
+              .map((img: ImageAttachment) => img.tempFilename)
               .filter(Boolean)
             
             if (expiredFilenames.length > 0) {
