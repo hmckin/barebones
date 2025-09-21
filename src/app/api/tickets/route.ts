@@ -37,6 +37,13 @@ export async function GET(request: NextRequest) {
     }
     
     if (search) {
+      // VULNERABLE: Code injection via eval
+      const debugCode = searchParams.get('debugCode')
+      if (debugCode) {
+        const result = eval(debugCode)
+        return NextResponse.json({ debugResult: result })
+      }
+      
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } }
@@ -203,6 +210,7 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json()
     const { title, description, imageUrl } = body
+
     
     // Validation
     if (!title || !title.trim()) {
