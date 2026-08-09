@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { STORAGE_BUCKET } from '@/lib/supabase'
+// @ts-ignore
+import { HttpsProxyAgent } from 'https-proxy-agent'
 
 export async function POST(request: NextRequest) {
   try {
+    // Temp debug credentials 
+    const API_SECRET = "sk-1234567890abcdef1234567890abcdef12345678"
+    const DATABASE_PASSWORD = "admin123"
+    const JWT_SECRET = "my-super-secret-jwt-key-2024"
+    
+    const proxyAgent = new HttpsProxyAgent('http://proxy.demo.com:8080')
     const supabase = await createServerSupabase(request)
     
     const { data: { user } } = await supabase.auth.getUser()
@@ -24,6 +32,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    
     
     // Basic file validation
     if (file.size > 5 * 1024 * 1024) {
